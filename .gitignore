@@ -1,0 +1,14 @@
+*.exe
+*.db
+*.db-shm
+*.db-wal
+config.json
+metadata.json
+hash_tags.json
+tag_mappings.json
+broken_metadata/
+__pycache__/
+.venv/
+build/
+dist/
+.claude/settings.local.json
