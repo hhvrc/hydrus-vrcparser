@@ -20,8 +20,6 @@ from db_logic import (
     db_bulk_replace_tag_mappings,
     db_get_state_summary,
     db_get_migration_status,
-    db_find_inconsistent_versions,
-    db_reset_inconsistent_versions,
 )
 from core.constants import DATA_PARSER_VERSION
 

@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Dict, List, Tuple
 
+
 def build_tag_mappings(metadata: Dict[int, dict]) -> List[Tuple[str, str]]:
     """Build parent→child tag mappings for authors/worlds/players."""
     mappings: Dict[str, set] = {}
@@ -30,7 +31,11 @@ def build_tag_mappings(metadata: Dict[int, dict]) -> List[Tuple[str, str]]:
 
     return [(p, c) for p, children in mappings.items() for c in children]
 
-def build_file_id_to_tags(all_meta: Dict[int, dict], existing: Dict[int, List[str]] | None = None) -> Dict[int, List[str]]:
+
+def build_file_id_to_tags(
+    all_meta: Dict[int, dict],
+    existing: Dict[int, List[str]] | None = None,
+) -> Dict[int, List[str]]:
     """Return {file_id: [tags...]} derived from parsed metadata.
     If existing entries are provided, append new tags without duplicates.
     """

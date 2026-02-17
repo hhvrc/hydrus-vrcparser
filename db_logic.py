@@ -8,7 +8,10 @@ from typing import Callable, Dict, Iterable, List, Optional, Tuple, Set, Any
 import re
 import xml.etree.ElementTree as ET
 
-from core.constants import ITXT_KEY_DESCRIPTION, ITXT_KEY_ADOBEXMPXML, FILE_PARSER_VERSION, DATA_PARSER_VERSION, BROKEN_DIR
+from core.constants import (
+    ITXT_KEY_DESCRIPTION, ITXT_KEY_ADOBEXMPXML,
+    FILE_PARSER_VERSION, DATA_PARSER_VERSION, BROKEN_DIR,
+)
 from core.utils import chunked, now_utc_iso, sanitize_itxt_text
 from core.meta_line_parser import parse_meta_line
 from core.meta_xmp_parser import parse_xmp_meta, XMPParseError
@@ -18,10 +21,12 @@ def hydrus_path_for_hash(data_dir: Path, h: str, ext: str = "png") -> Path:
     """Hydrus local file path for a given SHA256 hash and extension."""
     return data_dir / f"f{h[:2]}" / f"{h}.{ext.lstrip('.').lower()}"
 
-# ─── Migration framework (name/id derived from function names) ─────────────────
+
+# ─── Migration framework (name/id derived from function names) ────────────
 # Table schema_migrations(id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, applied_at TEXT NOT NULL)
 # Function name pattern:  _001_some_migration  → id=1, name="001_some_migration"
 _MIGRATION_FN_RE = re.compile(r"^_(\d{3,})_(.+)$")
+
 
 def _ensure_migration_table(conn: sqlite3.Connection) -> None:
     with conn:
@@ -34,6 +39,7 @@ def _ensure_migration_table(conn: sqlite3.Connection) -> None:
             )
             """
         )
+
 
 def _discover_migrations(namespace: dict) -> List[Tuple[int, str, Callable[[sqlite3.Connection], None]]]:
     migs: List[Tuple[int, str, Callable[[sqlite3.Connection], None]]] = []
@@ -48,6 +54,7 @@ def _discover_migrations(namespace: dict) -> List[Tuple[int, str, Callable[[sqli
         migs.append((id_num, name, obj))
     migs.sort(key=lambda t: t[0])
     return migs
+
 
 def run_migrations(conn: sqlite3.Connection, namespace: dict) -> None:
     _ensure_migration_table(conn)
@@ -69,7 +76,6 @@ def run_migrations(conn: sqlite3.Connection, namespace: dict) -> None:
             # Context manager rolls back this migration automatically
             logging.exception("Migration %s failed; changes rolled back.", mname)
             raise
-
 
 
 # ─── Helpers ────────────────────────────────────────────
@@ -273,18 +279,18 @@ def _003_split_parser_versions(conn: sqlite3.Connection) -> None:
     Split parser versioning into two concerns:
     - file_parser_version: Tracks iTXt extraction from PNG files (expensive I/O, rarely changes)
     - data_parser_version: Tracks metadata parsing from cached iTXt chunks (changes frequently)
-    
+
     Backfill strategy:
     - file_parser_version = 1 for all successfully extracted files (fresh concept, new starting point)
     - data_parser_version = old parser_version value (preserves parse history; typically 0 or 2)
     """
     cols = {row[1] for row in conn.execute("PRAGMA table_info(files)").fetchall()}
-    
+
     if "file_parser_version" not in cols:
         conn.execute("ALTER TABLE files ADD COLUMN file_parser_version INTEGER NOT NULL DEFAULT 0")
     if "data_parser_version" not in cols:
         conn.execute("ALTER TABLE files ADD COLUMN data_parser_version INTEGER NOT NULL DEFAULT 0")
-    
+
     # Backfill: Preserve old parser_version as data_parser_version (only if column exists)
     if "parser_version" in cols:
         with conn:
@@ -336,6 +342,7 @@ def _get_data_dir_path(conn: sqlite3.Connection, data_dir_id: int) -> Optional[P
     row = conn.execute("SELECT path FROM data_dirs WHERE id = ?", (data_dir_id,)).fetchone()
     return Path(row["path"]) if row else None
 
+
 def ensure_file_record(
     conn: sqlite3.Connection,
     file_id: int,
@@ -368,7 +375,8 @@ def ensure_file_record(
     row_by_hash = conn.execute("SELECT file_id FROM files WHERE hash = ?", (h,)).fetchone()
     if row_by_hash and row_by_hash["file_id"] != file_id:
         sys.exit(
-            f"Hash conflict: hash {h} already assigned to file_id {row_by_hash['file_id']} (incoming file_id {file_id}). Exiting."
+            f"Hash conflict: hash {h} already assigned to file_id "
+            f"{row_by_hash['file_id']} (incoming file_id {file_id}). Exiting."
         )
 
     # Compute size from disk (must not be NULL)
@@ -393,6 +401,7 @@ def ensure_file_record(
             (file_id, h, ext or "png", data_dir_id, now_utc_iso(), size_val),
         )
 
+
 def db_get_hashes_for_ids(conn: sqlite3.Connection, file_ids: List[int], chunk_size: int = 900) -> Dict[int, str]:
     """Return {file_id: hash} for a list of ids, chunked to avoid SQLite's 999-variable limit."""
     result: Dict[int, str] = {}
@@ -407,12 +416,13 @@ def db_get_hashes_for_ids(conn: sqlite3.Connection, file_ids: List[int], chunk_s
         result.update({int(r["file_id"]): r["hash"] for r in rows})
     return result
 
+
 def db_existing_processed_file_ids(conn: sqlite3.Connection) -> Set[int]:
     """File IDs where iTXt extraction is at current FILE_PARSER_VERSION.
 
     Files with iTXt chunks extracted at older versions are NOT considered processed
     for extraction, so they will be re-extracted when FILE_PARSER_VERSION is bumped.
-    
+
     This does NOT check data_parser_version; that's handled separately.
     """
     return {
@@ -423,6 +433,7 @@ def db_existing_processed_file_ids(conn: sqlite3.Connection) -> Set[int]:
         )
     }
 
+
 def db_file_has_itxt_chunks(conn: sqlite3.Connection, file_id: int) -> bool:
     """Check if a file has any cached iTXt chunks in the database."""
     row = conn.execute(
@@ -430,6 +441,7 @@ def db_file_has_itxt_chunks(conn: sqlite3.Connection, file_id: int) -> bool:
         (file_id,),
     ).fetchone()
     return row is not None
+
 
 def db_mark_processed_success(conn: sqlite3.Connection, file_id: int) -> None:
     """Mark a file as having iTXt chunks successfully extracted.
@@ -441,6 +453,7 @@ def db_mark_processed_success(conn: sqlite3.Connection, file_id: int) -> None:
             "UPDATE files SET file_parser_version = ?, parsed_at = ? WHERE file_id = ?",
             (FILE_PARSER_VERSION, now_utc_iso(), file_id),
         )
+
 
 def db_mark_processed_failure(conn: sqlite3.Connection, file_id: int) -> None:
     """Mark a file as having failed iTXt extraction (e.g., malformed PNG).
@@ -454,6 +467,7 @@ def db_mark_processed_failure(conn: sqlite3.Connection, file_id: int) -> None:
             "UPDATE files SET parsed_at = ? WHERE file_id = ?",
             (now_utc_iso(), file_id),
         )
+
 
 def db_mark_data_parsed(conn: sqlite3.Connection, file_ids: List[int]) -> None:
     """Mark files as having been processed for metadata normalization.
@@ -471,6 +485,7 @@ def db_mark_data_parsed(conn: sqlite3.Connection, file_ids: List[int]) -> None:
                 [DATA_PARSER_VERSION] + list(chunk),
             )
 
+
 def db_get_or_create_data_dir_id(conn: sqlite3.Connection, data_dir: Path) -> int:
     row = conn.execute("SELECT id FROM data_dirs WHERE path = ?", (str(data_dir),)).fetchone()
     if row:
@@ -478,6 +493,7 @@ def db_get_or_create_data_dir_id(conn: sqlite3.Connection, data_dir: Path) -> in
     with conn:
         cur = conn.execute("INSERT INTO data_dirs(path) VALUES(?)", (str(data_dir),))
         return int(cur.lastrowid)
+
 
 def db_upsert_hydrus_meta(conn: sqlite3.Connection, file_id: int, meta: dict) -> None:
     """Store width/height/has_transparency/has_human_readable_embedded_metadata."""
@@ -488,7 +504,9 @@ def db_upsert_hydrus_meta(conn: sqlite3.Connection, file_id: int, meta: dict) ->
     with conn:
         conn.execute(
             """
-            INSERT INTO hydrus_meta(file_id, width, height, has_transparency, has_human_readable_embedded_metadata, updated_at)
+            INSERT INTO hydrus_meta(
+                file_id, width, height, has_transparency,
+                has_human_readable_embedded_metadata, updated_at)
             VALUES(?, ?, ?, ?, ?, ?)
             ON CONFLICT(file_id) DO UPDATE SET
                 width = excluded.width,
@@ -499,6 +517,7 @@ def db_upsert_hydrus_meta(conn: sqlite3.Connection, file_id: int, meta: dict) ->
             """,
             (file_id, width, height, has_transparency, has_hrem, now_utc_iso()),
         )
+
 
 def db_get_cached_hydrus_meta(conn: sqlite3.Connection, file_ids: List[int], chunk_size: int = 900) -> Dict[int, dict]:
     """Return {file_id: minimal_meta_dict} for any file_ids already cached in hydrus_meta."""
@@ -567,6 +586,7 @@ def _normalize_meta(meta: Dict[str, Any], raw_text: str) -> Dict[str, Any]:
 
     return norm
 
+
 def db_replace_itxt_chunks(
     conn: sqlite3.Connection,
     file_id: int,
@@ -591,6 +611,7 @@ def db_replace_itxt_chunks(
                 """,
                 [(file_id, *d) for d in descriptors],
             )
+
 
 def db_load_all_parsed_meta(conn: sqlite3.Connection) -> Dict[int, dict]:
     """
@@ -655,11 +676,14 @@ def db_load_all_parsed_meta(conn: sqlite3.Connection) -> Dict[int, dict]:
     return result
 
 # ─── Push info helpers ────────────────────────────────────────────────────────
+
+
 def db_get_push_info(conn: sqlite3.Connection, file_id: int) -> Optional[sqlite3.Row]:
     return conn.execute(
         "SELECT file_id, tag_hash, first_pushed, last_pushed FROM pushes WHERE file_id = ?",
         (file_id,),
     ).fetchone()
+
 
 def db_upsert_push_info(conn: sqlite3.Connection, file_id: int, tag_hash: str) -> None:
     ts = now_utc_iso()
@@ -676,6 +700,8 @@ def db_upsert_push_info(conn: sqlite3.Connection, file_id: int, tag_hash: str) -
         )
 
 # ─── Tag caching helper ────────────────────────────────────────────────────────
+
+
 def db_bulk_replace_tag_mappings(conn: sqlite3.Connection, mappings: Iterable[Tuple[str, str]]) -> None:
     with conn:
         conn.execute("DELETE FROM tag_mappings")
@@ -688,25 +714,25 @@ def db_recover_broken_metadata(conn: sqlite3.Connection, broken_dir: Path = BROK
     """
     Attempt to recover broken metadata files from broken_metadata/ folder.
     Returns number of successfully recovered files.
-    
+
     This reads files that were previously unparseable and attempts to extract
     metadata fields that can be salvaged (author, world, etc.).
     """
     if not broken_dir.exists():
         return 0
-    
+
     recovered = 0
     for txt_file in broken_dir.glob("*.txt"):
         try:
             raw_text = txt_file.read_text(encoding="utf-8", errors="replace").strip()
             if not raw_text:
                 continue
-            
+
             # Try to extract file hash from filename
             hash_guess = txt_file.stem  # removes extension
             if len(hash_guess) < 8:  # Not a valid hash
                 continue
-            
+
             # Try with lenient parsing: this will skip malformed fields instead of failing
             try:
                 from core.meta_line_parser import parse_meta_line
@@ -719,13 +745,14 @@ def db_recover_broken_metadata(conn: sqlite3.Connection, broken_dir: Path = BROK
                 pass
         except Exception as e:
             logging.warning(f"Error reading {txt_file}: {e}")
-    
+
     return recovered
+
 
 def db_get_state_summary(conn: sqlite3.Connection) -> Dict[str, Any]:
     """Get comprehensive database state summary for diagnostics."""
     summary: Dict[str, Any] = {}
-    
+
     try:
         # File counts by version
         cursor = conn.execute("""
@@ -737,43 +764,43 @@ def db_get_state_summary(conn: sqlite3.Connection) -> Dict[str, Any]:
             f"file_v{r['file_parser_version']}_data_v{r['data_parser_version']}": r['cnt']
             for r in cursor.fetchall()
         }
-        
+
         # Total file count
         total_files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
         summary["total_files"] = total_files
-        
+
         # iTXt chunk stats
         summary["total_itxt_chunks"] = conn.execute("SELECT COUNT(*) FROM itxt_chunks").fetchone()[0]
-        
+
         cursor = conn.execute("""
             SELECT content_type, COUNT(*) as cnt
             FROM itxt_chunks
             GROUP BY content_type
         """)
         summary["itxt_by_type"] = {r['content_type'] or 'NULL': r['cnt'] for r in cursor.fetchall()}
-        
+
         # Files with parseable metadata
         summary["files_with_metadata"] = conn.execute("""
-            SELECT COUNT(DISTINCT file_id) FROM itxt_chunks 
+            SELECT COUNT(DISTINCT file_id) FROM itxt_chunks
             WHERE keyword IN (?, ?)
         """, (ITXT_KEY_DESCRIPTION, ITXT_KEY_ADOBEXMPXML)).fetchone()[0]
-        
+
         # Tag stats
         summary["tag_mappings"] = conn.execute("SELECT COUNT(*) FROM tag_mappings").fetchone()[0]
         summary["hash_tags"] = conn.execute("SELECT COUNT(*) FROM hash_tags").fetchone()[0]
         summary["pushes_tracked"] = conn.execute("SELECT COUNT(*) FROM pushes").fetchone()[0]
-        
+
     except sqlite3.OperationalError as e:
         summary["error"] = f"Database error: {str(e)}"
     except sqlite3.DatabaseError as e:
         summary["error"] = f"Database corruption error: {str(e)}"
-    
+
     return summary
 
 
 def db_find_inconsistent_versions(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
     """Find files with inconsistent version states: file_parser_version=0 but data_parser_version>0.
-    
+
     These files should have been extracted (file_parser_version>0) but weren't.
     They need re-parsing to fix the inconsistency.
     """
@@ -782,41 +809,41 @@ def db_find_inconsistent_versions(conn: sqlite3.Connection) -> List[Dict[str, An
         FROM files
         WHERE file_parser_version = 0 AND data_parser_version > 0
     """).fetchall()
-    
+
     return [dict(r) for r in rows]
 
 
 def db_reset_inconsistent_versions(conn: sqlite3.Connection, file_ids: List[int]) -> int:
     """Reset inconsistent files by cleaning up orphaned data and re-queuing for extraction.
-    
+
     For files with file_parser_version=0 but data_parser_version>0:
     1. Delete iTXt chunks (they're orphaned since extraction failed)
     2. Delete hash_tags for these files (they're derived from invalid chunks)
     3. Reset both versions to 0 for re-extraction
-    
+
     Returns: number of files reset.
     """
     if not file_ids:
         return 0
-    
+
     count = 0
     with conn:
         for chunk in chunked(file_ids, 900):
             qmarks = ",".join(["?"] * len(chunk))
-            
+
             # Delete iTXt chunks (they shouldn't exist if file_parser_version=0)
             conn.execute(f"DELETE FROM itxt_chunks WHERE file_id IN ({qmarks})", chunk)
-            
+
             # Delete hash_tags for these files (derived from invalid chunks)
             conn.execute(f"DELETE FROM hash_tags WHERE file_id IN ({qmarks})", chunk)
-            
+
             # Reset both versions to 0 for fresh extraction
             cursor = conn.execute(
                 f"UPDATE files SET file_parser_version = 0, data_parser_version = 0 WHERE file_id IN ({qmarks})",
                 chunk,
             )
             count += cursor.rowcount
-    
+
     return count
 
 
@@ -863,7 +890,7 @@ def db_get_migration_status(conn: sqlite3.Connection) -> Dict[str, Any]:
     rows = conn.execute("""
         SELECT id, name, applied_at FROM schema_migrations ORDER BY id
     """).fetchall()
-    
+
     return {r['name']: r['applied_at'] for r in rows}
 
 
@@ -872,7 +899,7 @@ def db_print_diagnostic_report(conn: sqlite3.Connection) -> None:
     print("\n" + "="*70)
     print("DATABASE DIAGNOSTIC REPORT")
     print("="*70)
-    
+
     # State summary
     summary = db_get_state_summary(conn)
     if "error" in summary:
@@ -902,7 +929,10 @@ def db_print_diagnostic_report(conn: sqlite3.Connection) -> None:
         print(f"\n[WARN] INCONSISTENT VERSIONS ({len(inconsistent)}):")
         print("   Files with file_v=0 but data_v>0 (should be re-parsed):")
         for row in inconsistent[:5]:
-            print(f"   file_id={row['file_id']}, hash={row['hash'][:8]}..., file_v={row['file_parser_version']}, data_v={row['data_parser_version']}")
+            print(
+                f"   file_id={row['file_id']}, hash={row['hash'][:8]}..., "
+                f"file_v={row['file_parser_version']}, data_v={row['data_parser_version']}"
+            )
         if len(inconsistent) > 5:
             print(f"   ... and {len(inconsistent) - 5} more")
 
@@ -925,5 +955,5 @@ def db_print_diagnostic_report(conn: sqlite3.Connection) -> None:
         print(f"\n[OK] MIGRATIONS ({len(migs)}):")
         for name, timestamp in migs.items():
             print(f"   {name}")
-    
+
     print("\n" + "="*70 + "\n")

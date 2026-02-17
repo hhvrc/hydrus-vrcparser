@@ -34,6 +34,7 @@ from core.utils import chunked
 from core.png_itxt import extract_itxt_records_and_description
 from core.tag_builders import build_tag_mappings, build_file_id_to_tags
 
+
 def main():
     logging.basicConfig(
         level=logging.INFO,
@@ -63,25 +64,35 @@ def main():
         return
 
     all_file_ids = [int(row["file_id"]) for row in meta_rows if row.get("file_id") is not None]
-    
+
     # Fix inconsistent versions before proceeding
     inconsistent = db_find_inconsistent_versions(conn)
     if inconsistent:
         inconsistent_ids = [row["file_id"] for row in inconsistent]
         logging.warning(f"Found {len(inconsistent_ids)} files with inconsistent versions (file_v=0, data_v>0)")
         for row in inconsistent[:5]:
-            logging.debug(f"  file_id={row['file_id']}, hash={row['hash'][:8]}..., file_v={row['file_parser_version']}, data_v={row['data_parser_version']}")
+            logging.debug(
+                f"  file_id={row['file_id']}, hash={row['hash'][:8]}..., "
+                f"file_v={row['file_parser_version']}, data_v={row['data_parser_version']}"
+            )
         reset_count = db_reset_inconsistent_versions(conn, inconsistent_ids)
         logging.info(f"Reset {reset_count} inconsistent files for re-parsing")
         all_file_ids.extend(inconsistent_ids)
         all_file_ids = list(set(all_file_ids))
-    
+
     already_extracted = db_existing_processed_file_ids(conn)
     to_extract_ids = [fid for fid in all_file_ids if fid not in already_extracted]
-    logging.info(f"{len(all_file_ids)} total; {len(already_extracted)} already extracted; {len(to_extract_ids)} to extract")
+    logging.info(
+        f"{len(all_file_ids)} total; {len(already_extracted)} already extracted; "
+        f"{len(to_extract_ids)} to extract"
+    )
 
     # cache id->ext where available, fallback to 'png'
-    id_to_ext: Dict[int, str] = {int(r["file_id"]): r.get("ext", "png").lstrip(".").lower() for r in meta_rows if r.get("file_id") is not None and r.get("ext")}
+    id_to_ext: Dict[int, str] = {
+        int(r["file_id"]): r.get("ext", "png").lstrip(".").lower()
+        for r in meta_rows
+        if r.get("file_id") is not None and r.get("ext")
+    }
 
     # 2) Parse iTXt in batches, skipping files that already have cached chunks
     total_ok = 0
@@ -186,14 +197,13 @@ def main():
     # 4) Push tags only when changed
     logging.info(f"Evaluating tag changes for {len(file_id_to_tags)} files")
     push_tags_batched_if_changed(conn, client, args.service_name, file_id_to_tags, batch_size=BATCH_SIZE)
-    
+
     # 5) Final diagnostic report
     logging.info("Final database state:")
     db_print_diagnostic_report(conn)
-    
+
     logging.info("Done.")
     conn.close()
-
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
+
 def parse_args():
     p = argparse.ArgumentParser(
         description=(
@@ -17,6 +18,7 @@ def parse_args():
     p.add_argument("--db", help="SQLite database path (default: ./vrchat.db)")
     p.add_argument("--config", default="config.json", help="Path to config file (default: config.json)")
     return p.parse_args()
+
 
 def validate_args(args):
     if not args.api_key or not args.api_key.strip():

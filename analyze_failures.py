@@ -13,7 +13,7 @@ print("="*70)
 if broken_dir.exists():
     broken_files = list(broken_dir.glob("*.txt"))
     print(f"\n🔴 Found {len(broken_files)} broken metadata files")
-    
+
     if broken_files:
         print("\nSample broken files:")
         for f in broken_files[:5]:
@@ -64,4 +64,3 @@ else:
 
 conn.close()
 print("\n" + "="*70 + "\n")
-

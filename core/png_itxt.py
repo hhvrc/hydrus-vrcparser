@@ -70,6 +70,7 @@ def _parse_itxt_descriptors(data: bytes) -> Optional[Tuple[str, int, int, str, s
     text = parts[2].decode("utf-8", errors="replace")
     return keyword, comp_flag, comp_method, language_tag, translated_keyword, text
 
+
 def _is_xmp_xml(text: str) -> bool:
     """Check if text is valid XMP XML by parsing it."""
     if not text or not text.lstrip().startswith("<"):
@@ -109,6 +110,7 @@ def _detect_format(text: str, keyword: str = "") -> Optional[str]:
 
     return None
 
+
 def extract_itxt_records_and_description(path: Path, id_hash: str, broken_dir: Path):
     """
     Read PNG chunks and collect iTXt descriptors.
@@ -119,7 +121,11 @@ def extract_itxt_records_and_description(path: Path, id_hash: str, broken_dir: P
       parsed_ok: bool     → True if we successfully parsed a Description (json/line) or XMP xml
       io_error: bool
     """
-    descriptors: List[Tuple[int, Optional[str], Optional[int], Optional[int], Optional[str], Optional[str], Optional[str], str]] = []
+    DescriptorType = Tuple[
+        int, Optional[str], Optional[int], Optional[int],
+        Optional[str], Optional[str], Optional[str], str
+    ]
+    descriptors: List[DescriptorType] = []
     parsed_ok = False
     io_error = False
 
@@ -147,9 +153,11 @@ def extract_itxt_records_and_description(path: Path, id_hash: str, broken_dir: P
                     parsed_ok = True
 
                 # Store the SANITIZED text
-                descriptors.append(
-                    (seq, keyword, comp_flag, comp_method, language_tag, translated_keyword, raw_text, content_type or "text")
-                )
+                descriptors.append((
+                    seq, keyword, comp_flag, comp_method,
+                    language_tag, translated_keyword,
+                    raw_text, content_type or "text"
+                ))
                 seq += 1
 
     except (FileNotFoundError, PermissionError, OSError) as e:

@@ -13,4 +13,3 @@ conn = sqlite3.connect(str(db_path))
 conn.row_factory = sqlite3.Row
 db_print_diagnostic_report(conn)
 conn.close()
-

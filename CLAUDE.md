@@ -23,9 +23,6 @@ python check_db.py
 
 # Analyze failures and recovery opportunities
 python analyze_failures.py
-
-# Validate all changes
-python run_tests.py
 ```
 
 ## Building
@@ -41,9 +38,13 @@ pyinstaller hydrus-vrcparser.spec
 ```bash
 # Full test suite
 python -m unittest discover -s tests -v
+```
 
-# Quick validation (syntax + key tests)
-python run_tests.py
+## Linting
+
+```bash
+# flake8 (config in .flake8, max-line-length=120)
+flake8
 ```
 
 ## Dependencies
@@ -158,8 +159,6 @@ Field-level error handling: if parsing author fails, other fields still recover.
 **check_db.py** -- Prints diagnostic summary (file counts by version, iTXt chunks by type, migration status)
 
 **analyze_failures.py** -- Analyzes failed files and unparseable chunks; suggests recovery opportunities
-
-**run_tests.py** -- Quick validation: syntax check + unit tests
 
 ## Conventions
 

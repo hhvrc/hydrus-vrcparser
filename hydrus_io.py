@@ -14,6 +14,7 @@ from db_logic import (
 )
 from core.constants import BATCH_SIZE
 
+
 def get_service_key_by_name(client: hydrus.Client, desired_name: str | None = None) -> str:
     services = client.get_services().get("local_tags")
 
@@ -42,6 +43,7 @@ def get_service_key_by_name(client: hydrus.Client, desired_name: str | None = No
         raise SystemExit("ERROR: local tag service has no service_key")
     logging.info(f"Using local tag service: {name} ({key})")
     return key
+
 
 def _fetch_and_store_metadata(client: hydrus.Client, conn, file_ids: List[int], data_dir_id: int) -> List[dict]:
     """Fetch Hydrus metadata for given file IDs, ensure file records and cache metadata."""
@@ -96,15 +98,27 @@ def get_exif_vrchat_file_rows(client: hydrus.Client, conn, data_dir_id: int) -> 
         _fetch_and_store_metadata(client, conn, missing_files, data_dir_id)
 
     # Filter to human-readable embedded metadata
-    filtered = [f for f in combined if f.get("has_human_readable_embedded_metadata") in (True, 1)]
-    logging.info(f"{len(filtered)} files with human-readable embedded metadata ({len(cached_ids)} cached, {len(to_fetch)} fetched)")
+    filtered = [
+        f for f in combined
+        if f.get("has_human_readable_embedded_metadata") in (True, 1)
+    ]
+    logging.info(
+        f"{len(filtered)} files with human-readable embedded metadata "
+        f"({len(cached_ids)} cached, {len(to_fetch)} fetched)"
+    )
     return filtered
+
 
 def tags_hash(tags: List[str]) -> str:
     joined = "\n".join(sorted(tags))
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()
 
-def push_tags_batched_if_changed(conn, client: hydrus.Client, service_name: str, file_id_to_tags: Dict[int, List[str]], batch_size: int = BATCH_SIZE):
+
+def push_tags_batched_if_changed(
+    conn, client: hydrus.Client, service_name: str,
+    file_id_to_tags: Dict[int, List[str]],
+    batch_size: int = BATCH_SIZE,
+):
     try:
         service_key = get_service_key_by_name(client, service_name)
     except SystemExit as e:
@@ -126,7 +140,7 @@ def push_tags_batched_if_changed(conn, client: hydrus.Client, service_name: str,
 
     # chunk & push
     for i in range(0, len(to_push), batch_size):
-        batch = to_push[i : i + batch_size]
+        batch = to_push[i:i + batch_size]
         batch_ids = [fid for (fid, _, _) in batch]
         hashes_map = db_get_hashes_for_ids(conn, batch_ids)
 

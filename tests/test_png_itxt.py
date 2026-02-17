@@ -6,7 +6,11 @@ from core.constants import ITXT_KEY_ADOBEXMPXML
 
 class TestIsXmpXml(unittest.TestCase):
     def test_valid_xmpmeta(self):
-        xml = '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/></x:xmpmeta>'
+        xml = (
+            '<x:xmpmeta xmlns:x="adobe:ns:meta/">'
+            '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>'
+            '</x:xmpmeta>'
+        )
         self.assertTrue(_is_xmp_xml(xml))
 
     def test_bare_rdf(self):
@@ -40,7 +44,11 @@ class TestDetectFormat(unittest.TestCase):
         self.assertEqual(_detect_format("anything", keyword=ITXT_KEY_ADOBEXMPXML), "xml")
 
     def test_xmp_xml_detected(self):
-        xml = '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/></x:xmpmeta>'
+        xml = (
+            '<x:xmpmeta xmlns:x="adobe:ns:meta/">'
+            '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>'
+            '</x:xmpmeta>'
+        )
         self.assertEqual(_detect_format(xml), "xml")
 
     def test_legacy_line(self):

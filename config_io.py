@@ -3,6 +3,7 @@ import logging
 from argparse import Namespace
 from pathlib import Path
 
+
 def load_config(path: Path) -> dict:
     if path.exists():
         try:
@@ -11,11 +12,13 @@ def load_config(path: Path) -> dict:
             logging.error(f"Failed to read {path}: {e}")
     return {}
 
+
 def save_config(cfg: dict, path: Path) -> None:
     try:
         path.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
     except Exception as e:
         logging.error(f"Failed to write {path}: {e}")
+
 
 def merge_args_with_config(args) -> Namespace:
     """

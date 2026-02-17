@@ -29,23 +29,25 @@ def _parse_dt(value: Optional[str]) -> Optional[datetime]:
 
 
 # --- Namespaces ---
-X_NS   = "adobe:ns:meta/"
+X_NS = "adobe:ns:meta/"
 RDF_NS = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 XML_NS = "http://www.w3.org/XML/1998/namespace"
 
-NS_XMP  = "http://ns.adobe.com/xap/1.0/"
+NS_XMP = "http://ns.adobe.com/xap/1.0/"
 NS_TIFF = "http://ns.adobe.com/tiff/1.0/"
-NS_DC   = "http://purl.org/dc/elements/1.1/"
-NS_VRC  = "http://ns.vrchat.com/vrc/1.0/"
+NS_DC = "http://purl.org/dc/elements/1.1/"
+NS_VRC = "http://ns.vrchat.com/vrc/1.0/"
 
 
 # --- ID validators: usr_<uuid> and wrld_<uuid> ---
 _UUID_RE = r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-USR_RE  = re.compile(rf"^usr_{_UUID_RE}$")
+USR_RE = re.compile(rf"^usr_{_UUID_RE}$")
 WRLD_RE = re.compile(rf"^wrld_{_UUID_RE}$")
+
 
 def _valid_user_id(s: Optional[str]) -> Optional[str]:
     return s if s and USR_RE.match(s) else None
+
 
 def _valid_world_id(s: Optional[str]) -> Optional[str]:
     return s if s and WRLD_RE.match(s) else None
@@ -57,6 +59,7 @@ def _split_tag(tag: str):
         ns, _, local = tag[1:].partition("}")
         return ns, local
     return None, tag
+
 
 def _text(e: ET.Element) -> str:
     return (e.text or "").strip()

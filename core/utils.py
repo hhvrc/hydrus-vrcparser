@@ -3,12 +3,15 @@ from pathlib import Path
 import logging
 from typing import List, Optional
 
+
 def now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+
 def chunked(seq: List, n: int):
     for i in range(0, len(seq), n):
-        yield seq[i : i + n]
+        yield seq[i:i + n]
+
 
 def write_text_to_folder(folder_path: Path, file_name: str, text: str) -> None:
     try:

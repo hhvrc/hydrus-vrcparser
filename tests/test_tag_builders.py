@@ -153,7 +153,6 @@ class TestBuildTagMappings(unittest.TestCase):
         mappings = build_tag_mappings(meta)
         self.assertIn(("vrchat-user-id:usr_p1", "vrchat-user-name:Player1"), mappings)
 
-
     def test_merge_with_existing_tags(self):
         """When existing tags are provided, new tags merge without duplicates."""
         meta = {

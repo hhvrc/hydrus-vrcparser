@@ -72,7 +72,6 @@ class TestParseMetaLine(unittest.TestCase):
         result = parse_meta_line(line)
         self.assertEqual(result["world"]["instanceId"], "wrld_abc:12345")
 
-
     def test_bare_wrld_segment(self):
         """Bare wrld_ segment (no 'world:' prefix) should be parsed as world."""
         line = "screenshotmanager|0|wrld_abc,12345,Test World"
