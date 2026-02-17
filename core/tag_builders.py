@@ -66,6 +66,10 @@ def build_file_id_to_tags(all_meta: Dict[int, dict], existing: Dict[int, List[st
             if player_name:
                 tags.append(f"vrchat-user-name:{player_name}")
 
+        creator_tool = (meta.get("creator_tool") or "").strip()
+        if creator_tool:
+            tags.append(f"creator_tool:{creator_tool}")
+
         created = meta.get("created")
         if isinstance(created, datetime):
             tags.append(f"vrchat-date:{created.strftime('%Y-%m-%d')}")

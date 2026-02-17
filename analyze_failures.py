@@ -2,7 +2,7 @@
 """Analyze broken metadata and parse failures - uses db_logic functions"""
 import sqlite3
 from pathlib import Path
-from db_logic import db_find_unprocessed_files, db_find_unparseable_chunks, db_get_state_summary
+from db_logic import db_find_files_without_metadata, db_find_unparseable_chunks, db_get_state_summary
 
 # Check for broken_metadata directory
 broken_dir = Path("broken_metadata")
@@ -45,15 +45,13 @@ print(f"\n📊 Total files: {state.get('total_files', 0)}")
 print(f"   iTXt chunks: {state.get('total_itxt_chunks', 0)}")
 print(f"   With metadata: {state.get('files_with_metadata', 0)}")
 
-# Unprocessed files
-unprocessed = db_find_unprocessed_files(conn)
-if unprocessed:
-    print(f"\n⚠️  FILES WITH NO ITXT CHUNKS ({len(unprocessed)}):")
-    print("   (These were marked as extracted but have no chunks)")
-    for row in unprocessed[:5]:
-        print(f"     - file_id={row['file_id']}, hash={row['hash'][:12]}...")
+# Processed files with no VRC metadata
+no_metadata = db_find_files_without_metadata(conn)
+if no_metadata:
+    print(f"\n   Processed, no VRC metadata: {len(no_metadata)} files")
+    print("   (Scanned for iTXt but contained no VRC embedded data)")
 else:
-    print("\n✓ No files with extraction marked but missing chunks")
+    print("\n   All processed files contain iTXt chunks")
 
 # Unparseable chunks
 unparseable = db_find_unparseable_chunks(conn)

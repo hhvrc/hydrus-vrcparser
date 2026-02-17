@@ -21,6 +21,41 @@ class TestBuildFileIdToTags(unittest.TestCase):
         self.assertIn("vrchat-world-id:wrld_xyz", tags)
         self.assertIn("vrchat-world-name:MyWorld", tags)
 
+    def test_creator_tool_tag(self):
+        meta = {
+            1: {
+                "author": {"id": "usr_abc", "displayName": "User"},
+                "world": {"id": "", "instanceId": "", "name": ""},
+                "players": [],
+                "creator_tool": "VRChat",
+            }
+        }
+        tags = build_file_id_to_tags(meta)[1]
+        self.assertIn("creator_tool:VRChat", tags)
+
+    def test_creator_tool_photo_viewer(self):
+        meta = {
+            1: {
+                "author": {"id": "usr_abc", "displayName": "User"},
+                "world": {"id": "", "instanceId": "", "name": ""},
+                "players": [],
+                "creator_tool": "Microsoft Windows Photo Viewer 10.0.26100.1882",
+            }
+        }
+        tags = build_file_id_to_tags(meta)[1]
+        self.assertIn("creator_tool:Microsoft Windows Photo Viewer 10.0.26100.1882", tags)
+
+    def test_no_creator_tool_tag_when_absent(self):
+        meta = {
+            1: {
+                "author": {"id": "usr_abc", "displayName": "User"},
+                "world": {"id": "", "instanceId": "", "name": ""},
+                "players": [],
+            }
+        }
+        tags = build_file_id_to_tags(meta)[1]
+        self.assertFalse(any(t.startswith("creator_tool:") for t in tags))
+
     def test_player_tags(self):
         meta = {
             1: {

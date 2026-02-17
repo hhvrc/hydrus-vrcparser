@@ -148,12 +148,8 @@ def parse_xmp_meta(xml_text: str):
         e = grouped.get(ns, {}).get(local)
         return _text(e) if e is not None else None
 
-    # --- XMP core (validate CreatorTool == "VRChat") ---
+    # --- XMP core ---
     creator_tool = _text_of(NS_XMP, "CreatorTool")
-    if creator_tool != "VRChat":
-        raise XMPParseError(
-            f"Unsupported or missing XMP CreatorTool: {creator_tool!r}; expected 'VRChat'"
-        )
 
     raw_author = _text_of(NS_XMP, "Author")
     xmp_create = _parse_dt(_text_of(NS_XMP, "CreateDate"))
@@ -193,13 +189,14 @@ def parse_xmp_meta(xml_text: str):
         # Normal form: Author is a name, never treated as ID
         author_name = raw_author
 
-    # --- Minimal identifier presence check ---
+    # --- Require at least one VRC namespace identifier ---
     if not world_id and not author_id:
         raise XMPParseError("Missing or invalid VRChat identifiers in XMP metadata")
 
     return {
         "raw_xml": xml_text,
         "type": "xmp",
+        "creator_tool": creator_tool,
         "author": {"id": author_id, "displayName": author_name},
         "created": xmp_create,
         "modified": xmp_modify,

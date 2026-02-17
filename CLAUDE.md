@@ -176,7 +176,7 @@ Field-level error handling: if parsing author fails, other fields still recover.
 from db_logic import (
     db_print_diagnostic_report,      # Print formatted state summary
     db_get_state_summary,             # Return dict of counts/stats
-    db_find_unprocessed_files,        # Find orphaned files
+    db_find_files_without_metadata,   # Find processed files with no VRC metadata
     db_find_unparseable_chunks,       # Find truly unparseable VRC chunks
     db_get_migration_status,          # Get applied migrations
     db_recover_broken_metadata,       # Retry recovery from broken_metadata/

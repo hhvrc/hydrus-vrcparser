@@ -532,6 +532,7 @@ def _normalize_meta(meta: Dict[str, Any], raw_text: str) -> Dict[str, Any]:
         'raw_text': raw_text,
         'type': meta.get('type'),
         'index': meta.get('index'),
+        'creator_tool': meta.get('creator_tool'),
         'author': {'id': '', 'displayName': ''},
         'world': {'id': '', 'instanceId': '', 'name': ''},
         'position': {'x': 0.0, 'y': 0.0, 'z': 0.0},
@@ -819,8 +820,12 @@ def db_reset_inconsistent_versions(conn: sqlite3.Connection, file_ids: List[int]
     return count
 
 
-def db_find_unprocessed_files(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
-    """Find files that should have been extracted but lack iTXt chunks."""
+def db_find_files_without_metadata(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
+    """Find processed files (file_parser_version > 0) that have no iTXt chunks.
+
+    These are files successfully scanned for iTXt but containing no VRC metadata
+    (e.g. plain PNGs, screenshots without embedded data).
+    """
     rows = conn.execute("""
         SELECT f.file_id, f.hash, f.file_parser_version, f.data_parser_version, COUNT(ic.file_id) as chunk_count
         FROM files f
@@ -829,7 +834,7 @@ def db_find_unprocessed_files(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
         GROUP BY f.file_id
         HAVING chunk_count = 0
     """).fetchall()
-    
+
     return [dict(r) for r in rows]
 
 
@@ -901,12 +906,11 @@ def db_print_diagnostic_report(conn: sqlite3.Connection) -> None:
         if len(inconsistent) > 5:
             print(f"   ... and {len(inconsistent) - 5} more")
 
-    # Unprocessed files
-    unprocessed = db_find_unprocessed_files(conn)
-    if unprocessed:
-        print(f"\n[WARN] UNPROCESSED ({len(unprocessed)}):")
-        for row in unprocessed[:3]:
-            print(f"   file_id={row['file_id']}, hash={row['hash'][:8]}...")
+    # Files processed but containing no VRC metadata
+    no_metadata = db_find_files_without_metadata(conn)
+    if no_metadata:
+        print(f"\n[INFO] PROCESSED, NO VRC METADATA ({len(no_metadata)}):")
+        print(f"   {len(no_metadata)} files scanned but contained no iTXt chunks")
 
     # Unparseable chunks
     unparseable = db_find_unparseable_chunks(conn)
