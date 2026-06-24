@@ -1,5 +1,64 @@
+import re
 from datetime import datetime
 from typing import Dict, List, Tuple
+
+# Known image-editor vendors → canonical brand tag. Matched as a substring
+# (case-insensitive) against XMP CreatorTool / softwareAgent strings.
+_EDITOR_BRANDS: List[Tuple[str, str]] = [
+    ("adobe", "adobe"),
+    ("photoshop", "adobe"),
+    ("lightroom", "adobe"),
+    ("gimp", "gimp"),
+    ("affinity", "affinity"),
+    ("serif", "affinity"),
+    ("corel", "corel"),
+    ("paintshop", "corel"),
+    ("paint.net", "paint.net"),
+    ("pixlr", "pixlr"),
+    ("picsart", "picsart"),
+    ("snapseed", "snapseed"),
+    ("photoroom", "photoroom"),
+    ("windows photo", "microsoft"),
+    ("microsoft", "microsoft"),
+]
+
+
+def _normalize_app_name(raw: str) -> str:
+    """Lowercase an app name and drop trailing platform/version noise.
+
+    'Adobe Photoshop Express (Android)' -> 'adobe photoshop express'
+    'GIMP 2.10.34'                       -> 'gimp'
+    """
+    s = raw.strip().lower()
+    s = re.sub(r"\s*\([^)]*\)\s*$", "", s)      # trailing "(android)" etc.
+    s = re.sub(r"\s+v?\d[\d.\-]*$", "", s)        # trailing version numbers
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def build_editor_tags(software_strings: List[str]) -> List[str]:
+    """Turn XMP creator/editor software strings into `editor:` tags.
+
+    Emits both a brand tag and the full normalized app name, e.g.
+    'Adobe Photoshop Express (Android)' -> ['editor:adobe',
+    'editor:adobe photoshop express']. VRChat itself is skipped (it is the
+    source game, not an external editor).
+    """
+    tags: set = set()
+    for raw in software_strings:
+        if not raw:
+            continue
+        low = raw.lower()
+        if "vrchat" in low:
+            continue
+        app = _normalize_app_name(raw)
+        if app:
+            tags.add(f"editor:{app}")
+        for needle, brand in _EDITOR_BRANDS:
+            if needle in low:
+                tags.add(f"editor:{brand}")
+                break
+    return sorted(tags)
 
 
 def build_tag_mappings(metadata: Dict[int, dict]) -> List[Tuple[str, str]]:
@@ -74,6 +133,12 @@ def build_file_id_to_tags(
         creator_tool = (meta.get("creator_tool") or "").strip()
         if creator_tool:
             tags.append(f"creator_tool:{creator_tool}")
+
+        # Tag the app(s) the image was created/edited in (Adobe, GIMP, ...)
+        editor_software = meta.get("editor_software") or []
+        if creator_tool:
+            editor_software = [creator_tool, *editor_software]
+        tags.extend(build_editor_tags(editor_software))
 
         created = meta.get("created")
         if isinstance(created, datetime):

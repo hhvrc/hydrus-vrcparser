@@ -1,8 +1,9 @@
 from __future__ import annotations
+import json
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 
 
 class XMPParseError(ValueError):
@@ -208,4 +209,80 @@ def parse_xmp_meta(xml_text: str):
     }
 
 
-__all__ = ["XMPParseError", "parse_xmp_meta"]
+def extract_embedded_vrcx_json(xml_text: str) -> Optional[dict]:
+    """Extract VRCX JSON metadata embedded inside an XMP packet.
+
+    VRChat screenshots that are later opened and re-saved by Adobe apps
+    (Photoshop Express, Lightroom, etc.) preserve the original VRCX JSON by
+    stuffing it into the Dublin Core ``dc:description`` field, typically nested
+    as ``<dc:description><rdf:Alt><rdf:li>{...VRCX JSON...}</rdf:li></rdf:Alt>``.
+
+    The native VRChat XMP namespace (``vrc:``) is absent in these files, so
+    ``parse_xmp_meta`` rejects them. This recovers the embedded JSON so it can be
+    parsed by the standard VRCX JSON path.
+
+    Returns the decoded JSON dict (containing at least ``world`` or ``author``),
+    or ``None`` if no embedded VRCX JSON is present or the XML is unparseable.
+    """
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return None
+
+    for elem in root.iter():
+        txt = (elem.text or "").strip()
+        # Cheap pre-filter before attempting a JSON decode on every text node
+        if not txt or txt[0] != "{":
+            continue
+        if '"world"' not in txt and '"author"' not in txt:
+            continue
+        try:
+            data = json.loads(txt)
+        except (ValueError, TypeError):
+            continue
+        if isinstance(data, dict) and (data.get("world") or data.get("author")):
+            return data
+    return None
+
+
+def extract_editor_software(xml_text: str) -> List[str]:
+    """Return the names of software that created/edited the image, per its XMP.
+
+    Collects ``xmp:CreatorTool`` plus every ``stEvt:softwareAgent`` recorded in
+    the ``xmpMM:History`` edit log. Both can appear either as elements (native
+    VRChat XMP) or as attributes (Adobe's compact RDF form), so we match by
+    local name across both. Order-preserving and de-duplicated.
+
+    Used to tag images by the app they were opened/re-saved in (Adobe, GIMP,
+    etc.). Returns an empty list if the XML is unparseable or no agent is named.
+    """
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return []
+
+    found: List[str] = []
+
+    def _add(value: Optional[str]) -> None:
+        v = (value or "").strip()
+        if v and v not in found:
+            found.append(v)
+
+    for elem in root.iter():
+        _, local = _split_tag(elem.tag)
+        if local in ("CreatorTool", "softwareAgent"):
+            _add(elem.text)
+        for attr_key, attr_val in elem.attrib.items():
+            _, attr_local = _split_tag(attr_key)
+            if attr_local in ("CreatorTool", "softwareAgent"):
+                _add(attr_val)
+
+    return found
+
+
+__all__ = [
+    "XMPParseError",
+    "parse_xmp_meta",
+    "extract_embedded_vrcx_json",
+    "extract_editor_software",
+]

@@ -14,7 +14,9 @@ from core.constants import (
 )
 from core.utils import chunked, now_utc_iso, sanitize_itxt_text
 from core.meta_line_parser import parse_meta_line
-from core.meta_xmp_parser import parse_xmp_meta, XMPParseError
+from core.meta_xmp_parser import (
+    parse_xmp_meta, XMPParseError, extract_embedded_vrcx_json, extract_editor_software,
+)
 
 
 def hydrus_path_for_hash(data_dir: Path, h: str, ext: str = "png") -> Path:
@@ -558,6 +560,7 @@ def _normalize_meta(meta: Dict[str, Any], raw_text: str) -> Dict[str, Any]:
         'rq': 0,
         'players': [],
         'created': meta.get('created'),
+        'editor_software': meta.get('editor_software') or [],
     }
 
     a = meta.get('author') or {}
@@ -631,6 +634,11 @@ def db_load_all_parsed_meta(conn: sqlite3.Connection) -> Dict[int, dict]:
         (ITXT_KEY_DESCRIPTION, ITXT_KEY_ADOBEXMPXML),
     ).fetchall()
 
+    # Editor provenance is orthogonal to the metadata-priority contest: a file's
+    # VRCX JSON may win priority while the editor software lives in a separate
+    # XMP chunk. Collect it per-file independently, then merge in at the end.
+    editor_by_fid: Dict[int, List[str]] = {}
+
     for r in rows:
         fid = int(r["file_id"])
         raw_text = sanitize_itxt_text(r["text"])
@@ -650,8 +658,22 @@ def db_load_all_parsed_meta(conn: sqlite3.Connection) -> Dict[int, dict]:
                 try:
                     meta = parse_xmp_meta(raw_text)
                 except XMPParseError:
-                    meta = parse_meta_line(raw_text)
-                    ctype = "line"  # fallback actually became 'line'
+                    # Adobe-edited VRChat screenshots wrap the original VRCX JSON
+                    # inside the XMP's dc:description; recover it if present.
+                    embedded = extract_embedded_vrcx_json(raw_text)
+                    if embedded is not None:
+                        meta = embedded
+                        ctype = "json"  # full VRCX payload → JSON priority
+                    else:
+                        meta = parse_meta_line(raw_text)
+                        ctype = "line"  # fallback actually became 'line'
+                # Record which app(s) created/edited the image (Adobe, GIMP, ...).
+                # Tracked per-file so it survives even if this XMP chunk loses
+                # the priority contest to a separate JSON chunk on the same file.
+                for sw in extract_editor_software(raw_text):
+                    bucket = editor_by_fid.setdefault(fid, [])
+                    if sw not in bucket:
+                        bucket.append(sw)
             else:
                 meta = parse_meta_line(raw_text)
 
@@ -668,6 +690,11 @@ def db_load_all_parsed_meta(conn: sqlite3.Connection) -> Dict[int, dict]:
         except (json.JSONDecodeError, ValueError, KeyError):
             # Skip rows that are irreparably broken (JSON parse errors, value errors, missing keys)
             continue
+
+    # Merge editor provenance back in (independent of metadata priority)
+    for fid, software in editor_by_fid.items():
+        if fid in result:
+            result[fid]["editor_software"] = software
 
     # Remove internal _parsed_type markers before returning
     for meta in result.values():

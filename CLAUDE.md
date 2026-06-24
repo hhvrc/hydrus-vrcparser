@@ -127,7 +127,7 @@ The `content_type` column in `itxt_chunks` distinguishes metadata formats:
 - Files with FILE_PARSER_VERSION < current are re-extracted from disk
 - Automatic retry on version bump
 
-**DATA_PARSER_VERSION** (core/constants.py, currently 3):
+**DATA_PARSER_VERSION** (core/constants.py, currently 5):
 - Tracks metadata normalization from cached iTXt chunks (CPU-bound)
 - Changes frequently as parse logic improves
 - Files with DATA_PARSER_VERSION < current are re-parsed from database

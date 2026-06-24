@@ -10,7 +10,8 @@ BATCH_SIZE = 256
 # FILE_PARSER_VERSION: Tracks iTXt extraction from PNG files (expensive disk I/O, rarely changes)
 # DATA_PARSER_VERSION: Tracks metadata normalization from cached iTXt chunks (changes with parse logic)
 FILE_PARSER_VERSION = 1
-DATA_PARSER_VERSION = 4
+# v5: recover VRCX JSON embedded in dc:description of Adobe-edited screenshots
+DATA_PARSER_VERSION = 5
 
 # PNG / iTXt constants
 PNG_HEADER = b"\x89PNG\r\n\x1a\n"

@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timezone, timedelta
 
-from core.tag_builders import build_tag_mappings, build_file_id_to_tags
+from core.tag_builders import build_tag_mappings, build_file_id_to_tags, build_editor_tags
 
 
 class TestBuildFileIdToTags(unittest.TestCase):
@@ -55,6 +55,32 @@ class TestBuildFileIdToTags(unittest.TestCase):
         }
         tags = build_file_id_to_tags(meta)[1]
         self.assertFalse(any(t.startswith("creator_tool:") for t in tags))
+
+    def test_editor_tags_from_editor_software(self):
+        meta = {
+            1: {
+                "author": {"id": "usr_abc", "displayName": "User"},
+                "world": {"id": "", "instanceId": "", "name": ""},
+                "players": [],
+                "editor_software": ["Adobe Photoshop Express (Android)"],
+            }
+        }
+        tags = build_file_id_to_tags(meta)[1]
+        self.assertIn("editor:adobe", tags)
+        self.assertIn("editor:adobe photoshop express", tags)
+
+    def test_no_editor_tag_for_vrchat(self):
+        meta = {
+            1: {
+                "author": {"id": "usr_abc", "displayName": "User"},
+                "world": {"id": "", "instanceId": "", "name": ""},
+                "players": [],
+                "creator_tool": "VRChat",
+                "editor_software": ["VRChat"],
+            }
+        }
+        tags = build_file_id_to_tags(meta)[1]
+        self.assertFalse(any(t.startswith("editor:") for t in tags))
 
     def test_player_tags(self):
         meta = {
@@ -116,6 +142,42 @@ class TestBuildFileIdToTags(unittest.TestCase):
         }
         tags = build_file_id_to_tags(meta)[1]
         self.assertIn("vrchat-world-instanceId:wrld_abc:12345", tags)
+
+
+class TestBuildEditorTags(unittest.TestCase):
+    def test_adobe_express_brand_and_app(self):
+        self.assertEqual(
+            build_editor_tags(["Adobe Photoshop Express (Android)"]),
+            ["editor:adobe", "editor:adobe photoshop express"],
+        )
+
+    def test_strips_version_numbers(self):
+        self.assertEqual(build_editor_tags(["GIMP 2.10.34"]),
+                         ["editor:gimp"])
+
+    def test_photoshop_maps_to_adobe(self):
+        tags = build_editor_tags(["Adobe Photoshop 25.0"])
+        self.assertIn("editor:adobe", tags)
+        self.assertIn("editor:adobe photoshop", tags)
+
+    def test_vrchat_skipped(self):
+        self.assertEqual(build_editor_tags(["VRChat"]), [])
+
+    def test_unknown_editor_gets_app_only(self):
+        # No known brand, but still tag the app name
+        self.assertEqual(build_editor_tags(["SomeRandomTool"]),
+                         ["editor:somerandomtool"])
+
+    def test_dedup_across_inputs(self):
+        tags = build_editor_tags([
+            "Adobe Photoshop Express (Android)",
+            "Adobe Photoshop Express (Android)",
+        ])
+        self.assertEqual(tags, ["editor:adobe", "editor:adobe photoshop express"])
+
+    def test_empty_input(self):
+        self.assertEqual(build_editor_tags([]), [])
+        self.assertEqual(build_editor_tags(["", "   "]), [])
 
 
 class TestBuildTagMappings(unittest.TestCase):
