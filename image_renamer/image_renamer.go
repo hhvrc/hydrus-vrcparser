@@ -14,9 +14,9 @@ import (
 
 var (
 	// Matches files already in the new format with numeric capture groups
-	vrchatNewFileRe = regexp.MustCompile(`^VRChat_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.(\d{3})_(\d+)x(\d+)\.png$`)
+	vrchatNewFileRe = regexp.MustCompile(`(?i)^VRChat_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.(\d{3})_(\d+)x(\d+)\.png$`)
 	// Matches old-format files: VRChat_<width>x<height>_<date>_<time>.png
-	vrchatOldFileRe = regexp.MustCompile(`^VRChat_(\d+)x(\d+)_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.(\d{3})\.png$`)
+	vrchatOldFileRe = regexp.MustCompile(`(?i)^VRChat_(\d+)x(\d+)_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.(\d{3})\.png$`)
 	// Matches directories named YYYY-MM-DD
 	dateDirRe = regexp.MustCompile(`^(\d{4})-(\d{2})-(\d{2})$`)
 	// Matches files named HH-MM-SS.SSS.png

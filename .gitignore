@@ -6,6 +6,8 @@ config.json
 metadata.json
 hash_tags.json
 tag_mappings.json
+user_correlations.csv
+friends-list.csv.txt
 broken_metadata/
 __pycache__/
 .venv/
