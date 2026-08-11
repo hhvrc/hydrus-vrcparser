@@ -14,3 +14,15 @@ __pycache__/
 build/
 dist/
 .claude/settings.local.json
+
+# .NET
+bin/
+obj/
+*.user
+artifacts/
+appsettings.Development.json
+appsettings.*.local.json
+
+# Parity-gate artifacts (step 6)
+parity-*.json
+*.db.bak
