@@ -1,0 +1,40 @@
+{
+  "metadata": [
+    {
+      "file_id": 42,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "size": 29314,
+      "ext": ".png",
+      "width": 1500,
+      "height": 1477,
+      "has_transparency": false,
+      "has_human_readable_embedded_metadata": true,
+      "known_urls": [
+        "https://x.com/exampleuser/status/1234567890"
+      ],
+      "tags": {
+        "616c6c206b6e6f776e2074616773": {
+          "name": "all known tags",
+          "type": 10,
+          "type_pretty": "virtual combined tag domain",
+          "storage_tags": {
+            "0": [
+              "vrchat",
+              "vrchat-world-name:Example World"
+            ],
+            "2": [
+              "deleted-example"
+            ]
+          },
+          "display_tags": {
+            "0": [
+              "vrchat"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "version": 94,
+  "hydrus_version": 681
+}

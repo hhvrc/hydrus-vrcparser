@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HydrusTagger.Cli/HydrusTagger.Cli.csproj" />
+    <Project Path="src/HydrusTagger.Core/HydrusTagger.Core.csproj" />
+    <Project Path="src/HydrusTagger.Taggers/HydrusTagger.Taggers.csproj" />
+    <Project Path="src/HydrusTagger.Tests/HydrusTagger.Tests.csproj" />
+  </Folder>
+</Solution>

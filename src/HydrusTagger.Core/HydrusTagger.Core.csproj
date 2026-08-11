@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
+    <!-- EF Core 10.0.10 pulls SQLitePCLRaw 2.1.11 transitively, which trips
+         NU1903 (GHSA-2m69-gcr7-jv3q: bundled SQLite vulnerability, affects
+         <= 2.1.11). Pin the patched 2.1.12 rather than suppressing the warning.
+         Revisit when EF Core ships a build that references it directly. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.10" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="HydrusTagger.Tests" />
+  </ItemGroup>
+</Project>
