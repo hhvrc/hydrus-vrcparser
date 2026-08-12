@@ -15,9 +15,11 @@ namespace HydrusTagger.Core.Tagging;
 /// halfwidth forms. Python compares code points, so it puts emoji last.
 /// </para>
 /// <para>
-/// VRChat display names routinely contain both, and the pushed tag hash is
-/// <c>sha256(join("\n", sorted(tags)))</c>. Getting this wrong would invalidate
-/// every stored push hash for the affected files and re-push them forever.
+/// The pushed tag hash is <c>sha256(join("\n", sorted(tags)))</c>, so an
+/// ordering disagreement invalidates the stored hash for every affected file
+/// and re-pushes it on every run. Measured against the current corpus no tag
+/// set contains an astral character, so ordinal would agree today -- this is
+/// insurance against the first emoji display name, not a fix for a live bug.
 /// Code point order is also exactly UTF-8 byte order, if that is easier to
 /// reason about.
 /// </para>

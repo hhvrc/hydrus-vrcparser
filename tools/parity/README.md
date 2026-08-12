@@ -51,3 +51,26 @@ Note that ~76% of chunks legitimately end in `MetaParseError`: they are Adobe
 XMP packets from non-VRChat images that carry no `vrc:` namespace. Both
 implementations must agree on those failures too, which is why `error` is one
 of the compared fields.
+
+## Per-file tag comparison
+
+The hard gate. Runs the whole pipeline on both sides -- priority contest,
+editor provenance, tag building -- and diffs the tags that would actually reach
+Hydrus, plus the hash used for change detection.
+
+```bash
+python tools/parity/dump_python_tags.py vrchat.db /tmp/py_tags.jsonl
+
+dotnet run --project src/HydrusTagger.Cli -- \
+    dump-file-tags /tmp/vrchat_copy.db /tmp/cs_tags.jsonl
+
+python tools/parity/compare_tags.py /tmp/py_tags.jsonl /tmp/cs_tags.jsonl
+```
+
+Covers all 12,434 files that have cached chunks; 2,274 of them yield tags. The
+remaining ~10,000 produce no VRChat metadata on either side, and the comparison
+requires them to agree on that too.
+
+Anything other than "identical for every file" is a regression. As a second
+check, the 2,274 `tag_hash` values should all equal the `tag_hash` already
+stored in `pushes` -- that is what guarantees the first real run pushes nothing.

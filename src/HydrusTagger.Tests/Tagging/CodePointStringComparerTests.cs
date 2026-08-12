@@ -10,7 +10,9 @@ public class CodePointStringComparerTests
     public void DisagreesWithOrdinalExactlyWhereItIsSupposedTo()
     {
         // The justification for this whole class in one assertion: UTF-16
-        // ordinal puts a surrogate pair before U+E000, code point order does not.
+        // ordinal puts a surrogate pair before U+E000, code point order does
+        // not. Latent today -- no tag in the corpus is astral -- but the two
+        // orderings must not be allowed to drift apart silently.
         const string Emoji = "\U0001F600";
         const string PrivateUse = "\uE000";
 

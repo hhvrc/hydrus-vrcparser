@@ -46,8 +46,8 @@ public class TagSetTests
     public void DuplicateTagsAreCountedTwiceJustAsPythonDoes()
     {
         // The Python builder can emit a tag twice -- two players sharing a
-        // display name -- and its sorted join keeps both. Collapsing them here
-        // would change the hash of every such file.
+        // display name -- and its sorted join keeps both. No file in the
+        // current corpus does, so this pins the behaviour for the day one does.
         var tags = new TagSet(["vrchat", "vrchat-user-name:Bob", "vrchat-user-name:Bob"]);
 
         Assert.Equal(
@@ -61,8 +61,8 @@ public class TagSetTests
     {
         // U+1F600 is a surrogate pair, so a UTF-16 ordinal sort places it
         // before U+E000 and U+FF21. Python compares code points and puts it
-        // last. VRChat display names contain both kinds routinely, so this is
-        // the case that would quietly corrupt real push hashes.
+        // last. No tag in the current corpus is astral, so this guards the
+        // first emoji display name rather than fixing a present-day break.
         var tags = new TagSet(
         [
             "vrchat-user-name:\U0001F600",

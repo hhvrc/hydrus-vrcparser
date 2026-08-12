@@ -8,5 +8,14 @@ if (args.Length >= 3 && args[0] == "dump-chunk-parse")
     return ChunkParseDumper.Run(databasePath: args[1], outputPath: args[2]);
 }
 
-Console.Error.WriteLine("usage: hydrus-tagger dump-chunk-parse <database> <output.jsonl>");
+if (args.Length >= 3 && args[0] == "dump-file-tags")
+{
+    return FileTagDumper.Run(databasePath: args[1], outputPath: args[2]);
+}
+
+Console.Error.WriteLine("""
+    usage:
+      hydrus-tagger dump-chunk-parse <database> <output.jsonl>
+      hydrus-tagger dump-file-tags   <database> <output.jsonl>
+    """);
 return 1;

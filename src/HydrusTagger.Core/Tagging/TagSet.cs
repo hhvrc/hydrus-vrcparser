@@ -17,7 +17,9 @@ namespace HydrusTagger.Core.Tagging;
 /// <para>
 /// Duplicates are preserved rather than collapsed, because the Python builder
 /// can emit the same tag twice (a world with two players sharing a display
-/// name, say) and its hash counts both. Hydrus itself does not care.
+/// name, say) and its hash counts both. No file in the current corpus actually
+/// has one, so this only matters for the day one appears. Hydrus does not care
+/// either way.
 /// </para>
 /// </remarks>
 public sealed class TagSet
