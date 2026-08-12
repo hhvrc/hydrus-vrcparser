@@ -11,27 +11,10 @@ namespace HydrusTagger.Tests.Png;
 /// </summary>
 public class PngITxtReaderTests
 {
-    private static byte[] MakeItxt(
-        string keyword, byte compFlag = 0, byte compMethod = 0,
-        string lang = "", string trans = "", string text = "")
-    {
-        var buffer = new List<byte>();
-        buffer.AddRange(Encoding.UTF8.GetBytes(keyword));
-        buffer.Add(0);
-        buffer.Add(compFlag);
-        buffer.Add(compMethod);
-        buffer.AddRange(Encoding.UTF8.GetBytes(lang));
-        buffer.Add(0);
-        buffer.AddRange(Encoding.UTF8.GetBytes(trans));
-        buffer.Add(0);
-        buffer.AddRange(Encoding.UTF8.GetBytes(text));
-        return [.. buffer];
-    }
-
     [Fact]
     public void ParsesAnUncompressedChunk()
     {
-        var r = PngITxtReader.ParseRecord(MakeItxt("Description", text: "hello world"), 0);
+        var r = PngITxtReader.ParseRecord(PngBuilder.Itxt("Description", text: "hello world"), 0);
 
         Assert.Equal("Description", r.Keyword);
         Assert.Equal(0, r.CompressionFlag);
@@ -46,7 +29,7 @@ public class PngITxtReaderTests
     {
         // Compressed iTXt is not inflated, but the flag must survive rather
         // than the chunk being silently dropped.
-        var r = PngITxtReader.ParseRecord(MakeItxt("Description", compFlag: 1, text: "compressed data"), 0);
+        var r = PngITxtReader.ParseRecord(PngBuilder.Itxt("Description", compFlag: 1, text: "compressed data"), 0);
 
         Assert.Equal(1, r.CompressionFlag);
         Assert.Equal("compressed data", r.Text);
@@ -56,7 +39,7 @@ public class PngITxtReaderTests
     public void ParsesLanguageAndTranslatedKeyword()
     {
         var r = PngITxtReader.ParseRecord(
-            MakeItxt("Description", lang: "en", trans: "Desc", text: "content"), 0);
+            PngBuilder.Itxt("Description", lang: "en", trans: "Desc", text: "content"), 0);
 
         Assert.Equal("en", r.LanguageTag);
         Assert.Equal("Desc", r.TranslatedKeyword);
@@ -68,7 +51,7 @@ public class PngITxtReaderTests
     {
         // Only the first two NULs after the flags are separators; the rest
         // belong to the text.
-        var r = PngITxtReader.ParseRecord(MakeItxt("Description", text: "before\0after"), 0);
+        var r = PngITxtReader.ParseRecord(PngBuilder.Itxt("Description", text: "before\0after"), 0);
 
         Assert.False(r.IsUnparseable);
         Assert.Equal("before\0after", r.Text);
@@ -96,7 +79,7 @@ public class PngITxtReaderTests
     [Fact]
     public void AcceptsAnEmptyKeyword()
     {
-        var r = PngITxtReader.ParseRecord(MakeItxt("", text: "some text"), 0);
+        var r = PngITxtReader.ParseRecord(PngBuilder.Itxt("", text: "some text"), 0);
 
         Assert.Equal("", r.Keyword);
         Assert.Equal("some text", r.Text);
@@ -106,7 +89,7 @@ public class PngITxtReaderTests
     public void ParsesRealisticJsonPayload()
     {
         const string json = """{"author":{"id":"usr_abc","displayName":"Test"}}""";
-        var r = PngITxtReader.ParseRecord(MakeItxt("Description", text: json), 0);
+        var r = PngITxtReader.ParseRecord(PngBuilder.Itxt("Description", text: json), 0);
 
         Assert.Equal(json, r.Text);
     }
@@ -124,31 +107,14 @@ public class PngITxtReaderTests
 
     // ---- stream level ----
 
-    private static byte[] BuildPng(params (string Type, byte[] Data)[] chunks)
-    {
-        var buffer = new List<byte>([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-        var len = new byte[4];
-
-        foreach (var (type, data) in chunks)
-        {
-            BinaryPrimitives.WriteUInt32BigEndian(len, (uint)data.Length);
-            buffer.AddRange(len);
-            buffer.AddRange(Encoding.ASCII.GetBytes(type));
-            buffer.AddRange(data);
-            buffer.AddRange(new byte[4]); // CRC, not verified
-        }
-
-        return [.. buffer];
-    }
-
     [Fact]
     public void ReadsMultipleItxtChunksInOrderAndSkipsOthers()
     {
-        var png = BuildPng(
+        var png = PngBuilder.Png(
             ("IHDR", new byte[13]),
-            ("iTXt", MakeItxt("Description", text: "first")),
+            ("iTXt", PngBuilder.Itxt("Description", text: "first")),
             ("IDAT", new byte[64]),
-            ("iTXt", MakeItxt("XML:com.adobe.xmp", text: "<x/>")),
+            ("iTXt", PngBuilder.Itxt("XML:com.adobe.xmp", text: "<x/>")),
             ("IEND", []));
 
         var result = PngITxtReader.Read(new MemoryStream(png));
@@ -165,10 +131,10 @@ public class PngITxtReaderTests
     [Fact]
     public void StopsAtIend()
     {
-        var png = BuildPng(
-            ("iTXt", MakeItxt("Description", text: "kept")),
+        var png = PngBuilder.Png(
+            ("iTXt", PngBuilder.Itxt("Description", text: "kept")),
             ("IEND", []),
-            ("iTXt", MakeItxt("Description", text: "after the end")));
+            ("iTXt", PngBuilder.Itxt("Description", text: "after the end")));
 
         var result = PngITxtReader.Read(new MemoryStream(png));
 
@@ -196,7 +162,7 @@ public class PngITxtReaderTests
     [Fact]
     public void ReturnsWhatItHasWhenTheFileIsTruncatedMidStream()
     {
-        var png = BuildPng(("iTXt", MakeItxt("Description", text: "complete")));
+        var png = PngBuilder.Png(("iTXt", PngBuilder.Itxt("Description", text: "complete")));
         // Chop off the trailing chunk mid-header.
         var truncated = png[..^2];
 

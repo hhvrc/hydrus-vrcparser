@@ -19,11 +19,19 @@ public static class DataServiceCollectionExtensions
             Cache = SqliteCacheMode.Private,
         }.ToString();
 
+    /// <remarks>
+    /// Registers a factory rather than only a scoped context: taggers extract
+    /// several files concurrently, and a <see cref="TaggerDbContext"/> is not
+    /// thread-safe. The scoped registration stays for the ordinary
+    /// one-context-per-operation callers.
+    /// </remarks>
     public static IServiceCollection AddTaggerDb(this IServiceCollection services, string databasePath)
     {
-        services.AddDbContext<TaggerDbContext>(options => options
+        services.AddDbContextFactory<TaggerDbContext>(options => options
             .UseSqlite(BuildConnectionString(databasePath))
             .AddInterceptors(new SqlitePragmaInterceptor()));
+
+        services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<TaggerDbContext>>().CreateDbContext());
 
         return services;
     }
