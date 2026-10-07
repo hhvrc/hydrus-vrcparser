@@ -1,16 +1,25 @@
+# Build output
+dist/
 *.exe
+
+# Cache database, its WAL files, and snapshots taken before schema changes
+# or for dry runs (<db>.pre-v<N>.bak)
 *.db
 *.db-shm
 *.db-wal
+*.bak
+*.bak.tmp
+
+# Local settings and outputs that may hold personal data or secrets
 config.json
-metadata.json
-hash_tags.json
-tag_mappings.json
 user_correlations.csv
 friends-list.csv.txt
-broken_metadata/
+.claude/settings.local.json
+
+# Parity dumps (contain VRChat user names and ids from the real cache)
+*.jsonl
+parity-*.json
+
+# Python tooling (tools/parity)
 __pycache__/
 .venv/
-build/
-dist/
-.claude/settings.local.json

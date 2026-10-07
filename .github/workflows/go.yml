@@ -1,0 +1,46 @@
+name: Go
+
+on:
+  push:
+    branches: [ "master", "rewrite" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Not gofmt'd:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: Go source is ASCII
+        run: |
+          # Tools have turned \u escapes into literal characters before.
+          offenders=$(grep -rlP '[^\x00-\x7F]' --include='*.go' . || true)
+          if [ -n "$offenders" ]; then
+            echo "Non-ASCII bytes in:"; echo "$offenders"; exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      # -race: extraction runs concurrently, and cgo (which the race detector
+      # needs) is available on the Linux runner even if not on dev machines.
+      - name: Test
+        run: go test -race ./...
+
+      - name: Build (Windows)
+        run: GOOS=windows GOARCH=amd64 go build -o dist/hydrus-tagger.exe ./cmd/hydrus-tagger

@@ -1,0 +1,309 @@
+{
+  "local_tags": [
+    {
+      "name": "my tags",
+      "type": 5,
+      "type_pretty": "local tag domain",
+      "service_key": "6c6f63616c2074616773"
+    },
+    {
+      "name": "pixai tags",
+      "type": 5,
+      "type_pretty": "local tag domain",
+      "service_key": "68f70289e10864734403d148fc937a8fc4474e4b0cb2efc6cba8319a1de5d1bd"
+    }
+  ],
+  "tag_repositories": [
+    {
+      "name": "public tag repository",
+      "type": 0,
+      "type_pretty": "hydrus tag repository",
+      "service_key": "71e58d6d9b38ea52335cd0e919b5921886414511f56ab71c8bbaf5b63e134359"
+    }
+  ],
+  "local_files": [
+    {
+      "name": "my files",
+      "type": 2,
+      "type_pretty": "local file domain",
+      "service_key": "6c6f63616c2066696c6573"
+    }
+  ],
+  "local_updates": [
+    {
+      "name": "repository updates",
+      "type": 20,
+      "type_pretty": "local update file domain",
+      "service_key": "7265706f7369746f72792075706461746573"
+    }
+  ],
+  "file_repositories": [],
+  "all_local_files": [
+    {
+      "name": "hydrus local file storage",
+      "type": 15,
+      "type_pretty": "virtual combined local file domain",
+      "service_key": "616c6c206c6f63616c2066696c6573"
+    }
+  ],
+  "all_local_media": [
+    {
+      "name": "combined local file domains",
+      "type": 21,
+      "type_pretty": "virtual combined local media domain",
+      "service_key": "616c6c206c6f63616c206d65646961"
+    }
+  ],
+  "all_known_files": [
+    {
+      "name": "all known files",
+      "type": 11,
+      "type_pretty": "virtual combined file domain",
+      "service_key": "616c6c206b6e6f776e2066696c6573"
+    }
+  ],
+  "all_known_tags": [
+    {
+      "name": "all known tags",
+      "type": 10,
+      "type_pretty": "virtual combined tag domain",
+      "service_key": "616c6c206b6e6f776e2074616773"
+    }
+  ],
+  "trash": [
+    {
+      "name": "trash",
+      "type": 14,
+      "type_pretty": "local trash file domain",
+      "service_key": "7472617368"
+    }
+  ],
+  "services": {
+    "6c6f63616c2074616773": {
+      "name": "my tags",
+      "type": 5,
+      "type_pretty": "local tag domain"
+    },
+    "68f70289e10864734403d148fc937a8fc4474e4b0cb2efc6cba8319a1de5d1bd": {
+      "name": "pixai tags",
+      "type": 5,
+      "type_pretty": "local tag domain"
+    },
+    "71e58d6d9b38ea52335cd0e919b5921886414511f56ab71c8bbaf5b63e134359": {
+      "name": "public tag repository",
+      "type": 0,
+      "type_pretty": "hydrus tag repository"
+    },
+    "6c6f63616c2066696c6573": {
+      "name": "my files",
+      "type": 2,
+      "type_pretty": "local file domain"
+    },
+    "7265706f7369746f72792075706461746573": {
+      "name": "repository updates",
+      "type": 20,
+      "type_pretty": "local update file domain"
+    },
+    "616c6c206c6f63616c2066696c6573": {
+      "name": "hydrus local file storage",
+      "type": 15,
+      "type_pretty": "virtual combined local file domain"
+    },
+    "616c6c206c6f63616c206d65646961": {
+      "name": "combined local file domains",
+      "type": 21,
+      "type_pretty": "virtual combined local media domain"
+    },
+    "616c6c206b6e6f776e2066696c6573": {
+      "name": "all known files",
+      "type": 11,
+      "type_pretty": "virtual combined file domain"
+    },
+    "616c6c206b6e6f776e2074616773": {
+      "name": "all known tags",
+      "type": 10,
+      "type_pretty": "virtual combined tag domain"
+    },
+    "7aa62ce84caed7a9668dc6eabac9f9ff6e3e435c41f064f4ff9c12183258f2ed": {
+      "name": "interest",
+      "type": 7,
+      "type_pretty": "local like/dislike rating service",
+      "show_in_thumbnail": true,
+      "show_in_thumbnail_even_when_null": false,
+      "star_shape": "fat star",
+      "colours": {
+        "like": {
+          "pen": "#000000",
+          "brush": "#FFFF00"
+        },
+        "dislike": {
+          "pen": "#000000",
+          "brush": "#000000"
+        },
+        "null": {
+          "pen": "#000000",
+          "brush": "#BFBFBF"
+        },
+        "mixed": {
+          "pen": "#000000",
+          "brush": "#5F5F5F"
+        }
+      }
+    },
+    "86786769d64aeec4d2a6d41a8691bfb20ee17245cb33ba15ac2c74f1a18d7291": {
+      "name": "likes",
+      "type": 6,
+      "type_pretty": "local numerical rating service",
+      "show_in_thumbnail": false,
+      "show_in_thumbnail_even_when_null": false,
+      "star_shape": "heart",
+      "colours": {
+        "like": {
+          "pen": "#000000",
+          "brush": "#FF0000"
+        },
+        "dislike": {
+          "pen": "#000000",
+          "brush": "#FFFFFF"
+        },
+        "null": {
+          "pen": "#000000",
+          "brush": "#BFBFBF"
+        },
+        "mixed": {
+          "pen": "#000000",
+          "brush": "#5F5F5F"
+        }
+      },
+      "allows_zero": true,
+      "min_stars": 0,
+      "max_stars": 5
+    },
+    "7472617368": {
+      "name": "trash",
+      "type": 14,
+      "type_pretty": "local trash file domain"
+    }
+  },
+  "services_v2": [
+    {
+      "name": "my tags",
+      "service_key": "6c6f63616c2074616773",
+      "type": 5,
+      "type_pretty": "local tag domain"
+    },
+    {
+      "name": "pixai tags",
+      "service_key": "68f70289e10864734403d148fc937a8fc4474e4b0cb2efc6cba8319a1de5d1bd",
+      "type": 5,
+      "type_pretty": "local tag domain"
+    },
+    {
+      "name": "public tag repository",
+      "service_key": "71e58d6d9b38ea52335cd0e919b5921886414511f56ab71c8bbaf5b63e134359",
+      "type": 0,
+      "type_pretty": "hydrus tag repository"
+    },
+    {
+      "name": "my files",
+      "service_key": "6c6f63616c2066696c6573",
+      "type": 2,
+      "type_pretty": "local file domain"
+    },
+    {
+      "name": "repository updates",
+      "service_key": "7265706f7369746f72792075706461746573",
+      "type": 20,
+      "type_pretty": "local update file domain"
+    },
+    {
+      "name": "hydrus local file storage",
+      "service_key": "616c6c206c6f63616c2066696c6573",
+      "type": 15,
+      "type_pretty": "virtual combined local file domain"
+    },
+    {
+      "name": "combined local file domains",
+      "service_key": "616c6c206c6f63616c206d65646961",
+      "type": 21,
+      "type_pretty": "virtual combined local media domain"
+    },
+    {
+      "name": "all known files",
+      "service_key": "616c6c206b6e6f776e2066696c6573",
+      "type": 11,
+      "type_pretty": "virtual combined file domain"
+    },
+    {
+      "name": "all known tags",
+      "service_key": "616c6c206b6e6f776e2074616773",
+      "type": 10,
+      "type_pretty": "virtual combined tag domain"
+    },
+    {
+      "name": "interest",
+      "service_key": "7aa62ce84caed7a9668dc6eabac9f9ff6e3e435c41f064f4ff9c12183258f2ed",
+      "type": 7,
+      "type_pretty": "local like/dislike rating service",
+      "show_in_thumbnail": true,
+      "show_in_thumbnail_even_when_null": false,
+      "star_shape": "fat star",
+      "colours": {
+        "like": {
+          "pen": "#000000",
+          "brush": "#FFFF00"
+        },
+        "dislike": {
+          "pen": "#000000",
+          "brush": "#000000"
+        },
+        "null": {
+          "pen": "#000000",
+          "brush": "#BFBFBF"
+        },
+        "mixed": {
+          "pen": "#000000",
+          "brush": "#5F5F5F"
+        }
+      }
+    },
+    {
+      "name": "likes",
+      "service_key": "86786769d64aeec4d2a6d41a8691bfb20ee17245cb33ba15ac2c74f1a18d7291",
+      "type": 6,
+      "type_pretty": "local numerical rating service",
+      "show_in_thumbnail": false,
+      "show_in_thumbnail_even_when_null": false,
+      "star_shape": "heart",
+      "colours": {
+        "like": {
+          "pen": "#000000",
+          "brush": "#FF0000"
+        },
+        "dislike": {
+          "pen": "#000000",
+          "brush": "#FFFFFF"
+        },
+        "null": {
+          "pen": "#000000",
+          "brush": "#BFBFBF"
+        },
+        "mixed": {
+          "pen": "#000000",
+          "brush": "#5F5F5F"
+        }
+      },
+      "allows_zero": true,
+      "min_stars": 0,
+      "max_stars": 5
+    },
+    {
+      "name": "trash",
+      "service_key": "7472617368",
+      "type": 14,
+      "type_pretty": "local trash file domain"
+    }
+  ],
+  "version": 94,
+  "hydrus_version": 681
+}

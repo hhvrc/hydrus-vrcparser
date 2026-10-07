@@ -1,105 +1,85 @@
-# Hydrus VRChat Parser
+# hydrus-tagger
 
-Extract embedded metadata from VRChat screenshots stored in [Hydrus](https://hydrusnetwork.github.io/hydrus/) and push standardized tags back for organization and searchability.
+Tags files in a [Hydrus](https://hydrusnetwork.github.io/hydrus/) client from:
 
-VRChat embeds metadata in PNG iTXt chunks. This tool reads those chunks, parses them across three formats (JSON, XMP/XML, and legacy pipe-delimited), normalizes the data, and pushes tags to a Hydrus tag service.
+- **VRChat screenshots** -- the metadata VRChat and companion tools embed in PNG
+  iTXt chunks, in any of three formats: VRCX JSON, VRChat's XMP, and the older
+  pipe-delimited "line" format.
+- **Twitter/X URLs** -- the account each known URL points at.
 
-## What gets tagged
+It is a single executable with no runtime to install, and only ever adds tags.
+State is kept in a local SQLite cache (`vrchat.db`) so a scheduled run only
+reads new files and only pushes tags that changed.
 
-- **Author** -- VRChat user ID and display name
-- **World** -- world ID, instance ID, and world name
-- **Players** -- list of players present in the instance
-- **Date** -- screenshot capture date (from XMP metadata)
-- **Position** -- camera coordinates at time of capture
-- **Render quality** setting
+## Tags
 
-## Requirements
+| Source | Tags |
+|---|---|
+| VRChat | `vrchat`, `vrchat-author-id:`, `vrchat-author-name:`, `vrchat-world-id:`, `vrchat-world-name:`, `vrchat-world-instanceId:`, `vrchat-user-id:`, `vrchat-user-name:` (players present), `vrchat-date:`, `creator_tool:` (the XMP CreatorTool, verbatim), `editor:` (the app that edited the image, if any) |
+| Twitter/X | `twitter-username:` -- from twitter.com, x.com and the fxtwitter/vxtwitter/fixupx/fixvx mirrors |
 
-- Python 3.9+
-- A running [Hydrus client](https://hydrusnetwork.github.io/hydrus/) with the API enabled
-- Hydrus API access key (Client > Services > Review services > local > client api)
+## Setup
 
-## Installation
+1. In Hydrus, create a client API key (services > review services > client
+   api) with permission to search files, read metadata and add tags.
+2. Create `%APPDATA%\hydrus-tagger\config.json`:
 
-```bash
-git clone https://github.com/hhvrc/hydrus-vrcparser.git
-cd hydrus-vrcparser
-python -m venv .venv
+   ```json
+   {
+     "api_key": "<key>",
+     "service_name": "my tags",
+     "data_directory": "\\\\server\\hydrus\\files"
+   }
+   ```
 
-# Windows
-.venv\Scripts\activate
+   `data_directory` is the Hydrus files directory (the one with the `f00`..`fff`
+   folders); the VRChat tagger reads PNGs from it. Other settings, all optional:
+   `hydrus_address` (default `http://127.0.0.1:45869`), `database` (default
+   `vrchat.db`, relative to where you run the tool), `vrchat_selector` /
+   `twitter_selector` (search overrides), `twitter_namespace`, `timeout` (per
+   request, e.g. `"2m"`), `max_retries` (default 3; 0 disables retries).
+   Unknown keys are an error, so a typo cannot silently fall back to a default.
 
-# Linux/macOS
-source .venv/bin/activate
-
-pip install -r requirements.txt
-```
+   The key can also come from the `HYDRUS_API_KEY` environment variable.
+   Flags override both.
 
 ## Usage
 
-```bash
-python hydrus-vrcparser.py \
-    --api-key YOUR_API_KEY \
-    --hydrus-addr http://localhost:45869 \
-    --data-dir /path/to/hydrus/db/client_files \
-    --service-name "my tags"
+```powershell
+hydrus-tagger run --dry-run   # preview, against a throwaway copy of the database
+hydrus-tagger run             # derive and push
+hydrus-tagger run --only twitter
+hydrus-tagger status          # what the cache database holds (read-only)
+hydrus-tagger correlate       # suggest which vrchat-user-id and -name tags are the same person
 ```
 
-CLI arguments override values in `config.json`. The merged result is persisted back to the config file for subsequent runs, so you only need to pass arguments once.
-
-After the first run, simply execute: `python hydrus-vrcparser.py`
-
-### CLI options
-
-| Flag | Description | Default |
-|---|---|---|
-| `--api-key` | Hydrus API key | from config.json |
-| `--hydrus-addr` | Hydrus client API address | from config.json |
-| `--data-dir` | Path to Hydrus `client_files` directory | from config.json |
-| `--service-name` | Hydrus local tag service name | auto-detect if only one |
-| `--db` | SQLite database path | `./vrchat.db` |
-| `--config` | Config file path | `config.json` |
+`run` checks Hydrus is reachable and the tag service exists before touching the
+database. Ctrl+C stops it after saving progress; nothing done so far is redone.
 
 ## How it works
 
-1. **Discover** -- Queries Hydrus for PNGs with embedded metadata
-2. **Extract** -- Reads PNG iTXt chunks from disk; caches chunks to skip redundant disk I/O on subsequent runs
-3. **Recover** -- Scans `broken_metadata/` for previously failed files; retries with lenient parsing
-4. **Parse** -- Detects format (JSON > XMP > legacy) and parses with field-level error handling
-5. **Normalize** -- Converts all formats to common schema
-6. **Tag** -- Builds tag mappings from normalized metadata
-7. **Push** -- Pushes tags to Hydrus only when changed (SHA256 comparison)
+Each tagger names a Hydrus search, and the host does the rest:
 
-Metadata that fails to parse is saved to `broken_metadata/` for manual inspection.
+1. **Discover** candidates with the tagger's search.
+2. **Extract** (VRChat only): read new files' iTXt chunks off disk and cache
+   them. Versioned separately, so improving a parser never re-reads the share.
+3. **Derive** tags for files whose version is stale, or every file for taggers
+   whose input is live Hydrus metadata (Twitter: a file can gain a URL).
+4. **Push** only tag sets whose hash differs from the ledger of what was last
+   pushed, grouping identical sets into one request.
 
-## Supported metadata formats
+Progress is saved after every extract chunk, after deriving and after every
+push batch.
 
-| Format | Source | Parsed Fields |
-|---|---|---|
-| **JSON** | VRCX screenshot manager | Author, world, instance, players |
-| **XMP/XML** | VRChat native (normal & compact forms) | Author, world, capture date |
-| **Legacy pipe** | screenshotmanager / lfs | Author, world, instance, position, players, render quality |
+## Building
 
-All formats normalized to a common schema before tag generation.
+Requires Go 1.27.
 
-## Testing
-
-```bash
-python -m unittest discover -s tests -v
+```powershell
+go build -o dist\hydrus-tagger.exe ./cmd/hydrus-tagger
+go test ./...
+go vet ./...
 ```
-
-## Building a standalone executable
-
-```bash
-pip install pyinstaller
-pyinstaller hydrus-vrcparser.spec
-```
-
-Output: `dist/hydrus-vrcparser.exe`
-
-## Development
-
-See [CLAUDE.md](CLAUDE.md) for architecture details, conventions, and code guidance.
 
 ## License
 

@@ -1,187 +1,75 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code and the GitHub Copilot CLI when working with code in this repository.
+Guidance for coding agents working in this repository.
 
 ## Project Overview
 
-VRChat metadata extraction tool for [Hydrus](https://hydrusnetwork.github.io/hydrus/) image management. Extracts embedded PNG metadata (iTXt chunks) from VRChat screenshots stored in a Hydrus database, parses them across three formats (JSON, XMP/XML, legacy pipe-delimited), normalizes to a common schema, and pushes standardized tags back to Hydrus.
+`hydrus-tagger` is a Go CLI that tags files in a [Hydrus](https://hydrusnetwork.github.io/hydrus/) client: VRChat screenshot metadata from PNG iTXt chunks (three formats: VRCX JSON, VRChat XMP, legacy pipe-delimited "line"), and Twitter/X account handles from known URLs. It keeps its state in a SQLite cache (`vrchat.db`) and only ever adds tags.
 
-## Running
+History: it began as a Python tool, was ported to C#, then to Go. The VRChat parsers were verified byte-for-byte against both predecessors over the real cache (13,408 chunks, 12,437 files). The C# and Python are gone; git history has them (the last C# revision is commit 2088b29).
 
-```bash
-# Activate the virtual environment
-.venv\Scripts\activate
-
-# Full pipeline with diagnostics
-python hydrus-vrcparser.py
-
-# With CLI arguments (overrides config.json, persists back)
-python hydrus-vrcparser.py --api-key <KEY> --hydrus-addr http://localhost:45869 --data-dir <PATH> --service-name <NAME>
-
-# Check database state and diagnostics
-python check_db.py
-
-# Analyze failures and recovery opportunities
-python analyze_failures.py
-```
-
-## Building
+## Commands
 
 ```bash
-# Build Windows executable via PyInstaller
-pyinstaller hydrus-vrcparser.spec
-# Output: dist/hydrus-vrcparser.exe
+go build -o dist/hydrus-tagger.exe ./cmd/hydrus-tagger
+go test ./...
+go vet ./...
+gofmt -l .        # must print nothing
+
+hydrus-tagger run [--dry-run] [--only vrchat,twitter]
+hydrus-tagger status
+hydrus-tagger correlate
+hydrus-tagger parity chunks|tags <db> <out.jsonl>
 ```
 
-## Testing
+Settings: `%APPDATA%\hydrus-tagger\config.json` (`api_key`, `service_name`, `database`, `data_directory`, ...), then `HYDRUS_API_KEY` / `HYDRUS_ADDRESS`, then flags. Unknown config keys are errors. There is no default `data_directory` (it is machine-specific). The API key is never written anywhere by the tool and must never be committed.
 
-```bash
-# Full test suite
-python -m unittest discover -s tests -v
-```
+## Layout
 
-## Linting
-
-```bash
-# flake8 (config in .flake8, max-line-length=120)
-flake8
-```
-
-## Dependencies
-
-Only external dependency is `hydrus_api` (pinned in `requirements.txt`). Everything else uses Python stdlib (`sqlite3`, `json`, `xml.etree.ElementTree`, `pathlib`, `logging`).
-
-## Architecture
-
-### Seven-Stage Pipeline
-
-The main pipeline in `hydrus-vrcparser.py` runs seven sequential stages:
-
-1. **Discover & Cache** -- `hydrus_io.get_exif_vrchat_file_rows()` queries Hydrus API for PNGs with embedded metadata; caches results in SQLite to avoid redundant API calls
-
-2. **Extract iTXt** -- `core/png_itxt.py` extracts PNG iTXt chunks from files on disk; checks if chunks already cached and skips disk I/O if present; raw chunks stored in `itxt_chunks` table with content type discriminator
-
-3. **Recover Broken Metadata** -- Scans `broken_metadata/` directory for previously failed files; retries with lenient parsing (skips malformed fields instead of failing completely)
-
-4. **Parse & Normalize** -- `db_logic.db_load_all_parsed_meta()` reads chunks from database; dispatches to correct parser by content type (priority: JSON > XML > legacy line); normalizes all output via `_normalize_meta()` in `db_logic.py` to a common schema; field-level error handling allows partial recovery
-
-5. **Build Tags** -- `core/tag_builders.py` generates Hydrus tag mappings from normalized metadata; creates per-file tag sets; stores in `tag_mappings` and `hash_tags` tables
-
-6. **Push Tags** -- `hydrus_io.push_tags_batched_if_changed()` compares tags against SHA256 hashes in `pushes` table; only pushes changed tags; batches pushes to respect Hydrus API limits; graceful error handling prevents single failures from blocking batch
-
-7. **Diagnostics** -- `db_logic.db_print_diagnostic_report()` prints comprehensive database state summary: file counts by parser version, iTXt chunks by type, unprocessed files, unparseable chunks
-
-### Key Modules
-
-| Module | Role |
+| Package | Role |
 |---|---|
-| `cli.py` | Argument parsing and validation |
-| `config_io.py` | JSON config load/save with CLI merge; None-safe path handling |
-| `db_logic.py` | All SQLite operations: schema, migrations, queries, metadata normalization, analysis/recovery functions |
-| `hydrus_io.py` | Hydrus API interactions (search, metadata fetch, tag push) |
-| `core/png_itxt.py` | PNG binary parsing -- reads iTXt chunks from file bytes; content type detection |
-| `core/meta_xmp_parser.py` | XMP/XML metadata parser (VRChat-specific RDF structure) |
-| `core/meta_line_parser.py` | Legacy pipe-delimited format parser; lenient parsing (skips bad fields); handles bare `wrld_` segments |
-| `core/tag_builders.py` | Generates tag mappings and per-file tag sets from normalized metadata |
-| `core/constants.py` | Shared constants: FILE_PARSER_VERSION, DATA_PARSER_VERSION, batch sizes, PNG header bytes, iTXt keywords |
-| `core/utils.py` | Utilities: UTC timestamps, list chunking, text sanitization |
+| `cmd/hydrus-tagger` | CLI: config loading, subcommands, report printing |
+| `internal/tagging` | `Tagger` / `FileTagger` / `FileExtractor` interfaces, `TagSet` (+ change-detection hash), and `Host`, which runs taggers |
+| `internal/store` | SQLite: schema versioning, tagger state store, VRChat chunk cache, snapshots, `status` queries |
+| `internal/hydrus` | Hydrus client API: search (with `a OR b` terms), metadata, add_tags; retries and typed errors |
+| `internal/png` | PNG iTXt reader |
+| `internal/vrchat` | Content-type detection, line/XMP/JSON parsers, normalizer, loader (format priority contest), tag builder, and the VRChat tagger |
+| `internal/twitter` | URL-to-handle parsing and the Twitter tagger |
+| `internal/correlate` | Infers which `vrchat-user-id` and `vrchat-user-name` tags belong together |
+| `internal/parity` | JSONL dumps of parser output, for regression comparison (`tools/parity`) |
 
-### Database
+## How a run works
 
-SQLite with WAL mode and PRAGMA foreign_keys=ON. Schema created inline in `init_db()`. Migrations use function-name convention: functions named `_NNN_description` in `db_logic.py` are auto-discovered and applied via `schema_migrations` table.
+`tagging.Host.Run` per tagger: discover (Hydrus search) -> resolve file identity (cached in `files`, metadata fetched only for unseen files) -> extract (`FileExtractor` only; files below `ExtractVersion`) -> derive (files below `DeriveVersion`, or all if `RederiveEveryRun`) -> push (tag sets whose hash differs from `pushes`, grouped by identical set).
 
-**Key tables:**
-- `files` -- Hydrus file records with `file_parser_version`, `data_parser_version`, and `parsed_at` for independent retry
-- `itxt_chunks` -- Raw metadata chunks with `content_type` discriminator (`json`/`xml`/`line`/`text`)
-- `hydrus_meta` -- Cached Hydrus metadata (hash, file_id, size, dimensions)
-- `tag_mappings` / `hash_tags` -- Computed tag hierarchies and file-to-tag mappings
-- `pushes` -- SHA256 hashes of pushed tag sets (change-detection)
-- `data_dirs` -- Directory path mappings for file location
-- `schema_migrations` -- Applied migration ledger
+Rules the host relies on -- keep them:
+- **Progress is saved incrementally**: after each extract chunk (500 files), after derive, after each accepted push batch, and on the way out of a failed or cancelled run (`context.WithoutCancel`). A cancelled run must never redo or re-push what it already did.
+- **Only real cancellation stops a run.** A per-file or per-batch error is counted and reported; check `ctx.Err()` to tell the two apart. The Hydrus client never returns a timeout as `context.Canceled`.
+- **The tag service is resolved once.** The CLI resolves it in a preflight and passes the key in (`RunOptions.TagServiceKey`); without one, the host resolves it lazily, only when there is something to push.
+- **Nothing is touched before a run can succeed**: the API key, `--only` names, Hydrus reachability and the tag service are all checked before the database is opened.
+- **Two-tier versioning**: `ExtractVersion` covers the expensive disk read; `DeriveVersion` covers parsing from cached chunks. Bump the derive version when tag output could change; bump the extract version only when the on-disk read changes (it costs a full re-read of the share). The VRChat tagger's versions (1 and 5) match the legacy Python's, which the database carries.
 
-**Migrations:**
-- `_001_add_content_type_to_itxt_chunks` -- Added content type discrimination; backfill from legacy `is_json`; validate XML; drop `is_json`
-- `_002_add_parser_version_to_files` -- Added `parser_version` column
-- `_003_split_parser_versions` -- Split into `file_parser_version` and `data_parser_version`
-- `_004_reclassify_line_content_type` -- Reclassify `content_type='text'` Description chunks that parse as line format to `'line'`
-- `_005_drop_legacy_file_columns` -- Drop `processed`, `parse_ok`, `parser_version` (superseded by two-tier versioning)
+## Database
 
-### Content Type System
+SQLite, WAL, foreign keys on. Schema versioned with `PRAGMA user_version`; `baseVersion` (1) is the schema the C# port's last EF migration left behind. Add a schema change by appending a step to `migrations` in `internal/store/schema.go`; `Open` snapshots the database to `<db>.pre-v<N>.bak` first. A new database is created at the base version and migrated forward.
 
-The `content_type` column in `itxt_chunks` distinguishes metadata formats:
+Tables in use: `files` (identity; `data_dir_id` set only for files the legacy pipeline found on disk), `data_dirs`, `itxt_chunks` (VRChat cache; `content_type` json/xml/line/text), `tagger_file_state`, `tagger_tags` (JSON list of tags as derived), `pushes` (per tagger, file: hash last pushed). `hash_tags`, `tag_mappings`, `hydrus_meta`, `schema_migrations` and the EF history tables are legacy and unused.
 
-| content_type | Meaning |
-|---|---|
-| `json` | Valid JSON (VRCX format) |
-| `xml` | Valid XMP/XML |
-| `line` | Valid legacy pipe-delimited (screenshotmanager/lfs) |
-| `text` | Unrecognized or non-VRC content (e.g. GIMP comments, Adobe XMP without VRC data) |
+## Compatibility constraints
 
-`_detect_format()` in `core/png_itxt.py` classifies new chunks. Migration 004 reclassified existing `text` chunks that are actually valid line format. The `db_find_unparseable_chunks()` query filters out non-VRC keywords (`Comment`, `Microsoft.GameDVR.*`, `parameters`) and null-keyword chunks.
-
-### Two-Tier Parser Versioning
-
-**FILE_PARSER_VERSION** (core/constants.py, currently 1):
-- Tracks iTXt extraction state from PNG files (expensive disk I/O)
-- Rarely changes; bump only for PNG parsing logic changes
-- Files with FILE_PARSER_VERSION < current are re-extracted from disk
-- Automatic retry on version bump
-
-**DATA_PARSER_VERSION** (core/constants.py, currently 5):
-- Tracks metadata normalization from cached iTXt chunks (CPU-bound)
-- Changes frequently as parse logic improves
-- Files with DATA_PARSER_VERSION < current are re-parsed from database
-- **No disk I/O required** when bumped -- key optimization
-
-**Why split?** Extraction (I/O) and parsing (CPU) are separate concerns. Can improve data parsing without re-extracting from slow disk. Caching iTXt chunks avoids redundant disk I/O on subsequent runs.
-
-### Metadata Normalization
-
-All three parsers (JSON, XMP, legacy line) produce dicts that are normalized by `_normalize_meta()` in `db_logic.py` to a common schema:
-
-```python
-{
-    "author": {"id": str, "displayName": str},
-    "world": {"id": str, "instanceId": str, "name": str},
-    "position": {"x": float, "y": float, "z": float},
-    "rq": int,  # render quality
-    "players": [list of player dicts],  # Malformed entries skipped
-    "type": str,
-    "index": int,
-    "created": str,  # ISO 8601 (XMP only)
-}
-```
-
-Field-level error handling: if parsing author fails, other fields still recover. Lenient player parsing: skips malformed entries instead of failing entire metadata. The line parser handles bare `wrld_` segments (older screenshotmanager format that omits the `world:` prefix).
-
-### Utility Scripts
-
-**check_db.py** -- Prints diagnostic summary (file counts by version, iTXt chunks by type, migration status)
-
-**analyze_failures.py** -- Analyzes failed files and unparseable chunks; suggests recovery opportunities
+- **Tag hash**: `sha256(join("\n", sorted(tags)))`, duplicates kept, bytewise sort (= Python's code point order). Changing it re-pushes every file.
+- **Stored formats**: timestamps `2006-01-02T15:04:05.000000+00:00` UTC; tag JSON as readable UTF-8.
+- **Parser parity**: before and after any parser change, run `hydrus-tagger parity chunks|tags` on a copy of the database and diff with `tools/parity/compare_*.py`. Unexplained differences are regressions.
 
 ## Conventions
 
-- Large query parameter lists are chunked to stay under SQLite's 999-variable limit (use `core/utils.chunked()`)
-- Hydrus file paths follow pattern: `<data_dir>/f<hash[:2]>/<hash>.<ext>` (construct with `hydrus_path_for_hash()`)
-- Broken/unparseable metadata saved to `broken_metadata/` directory for manual inspection; recovery process retries with lenient parsing
-- Config merging: CLI args override `config.json` values; merged result persists back to config.json
-- Error handling: Try/except around field parsers, API calls, service lookups; partial data better than complete loss
-- Diagnostic output uses ASCII only (no emoji) to avoid Windows console encoding crashes
+- Comments explain why, not what; many record legacy quirks the parsers deliberately preserve.
+- Console output is ASCII only (Windows consoles have crashed on emoji).
+- Go source is ASCII and LF (`.gitattributes`); CI enforces ASCII. The file-writing tool has turned `\uXXXX` escapes into literal characters before -- grep for non-ASCII bytes after editing, and remember escapes do nothing inside backtick strings.
+- CI runs `go test -race`. cgo may be off on a dev machine, so races may only show up there.
+- Keep IN lists under 900 ids (`inChunks`).
+- Hydrus file paths: `<data_dir>/f<hash[:2]>/<hash>.<ext>` (`FileRef.PathUnder`).
 
-## Database Analysis Functions
+## Separate tool
 
-```python
-from db_logic import (
-    db_print_diagnostic_report,      # Print formatted state summary
-    db_get_state_summary,             # Return dict of counts/stats
-    db_find_files_without_metadata,   # Find processed files with no VRC metadata
-    db_find_unparseable_chunks,       # Find truly unparseable VRC chunks
-    db_get_migration_status,          # Get applied migrations
-    db_recover_broken_metadata,       # Retry recovery from broken_metadata/
-)
-```
-
-## Separate Tool
-
-`image_renamer.go` is an independent Go utility for renaming/organizing VRChat screenshots by date -- not part of the Python pipeline.
+`image_renamer/` is an independent Go utility for renaming VRChat screenshots by date; not part of `hydrus-tagger`.

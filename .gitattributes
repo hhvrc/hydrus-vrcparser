@@ -1,0 +1,4 @@
+# Go source is LF everywhere; gofmt rewrites CRLF and would flag every file.
+*.go text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
